@@ -1,0 +1,1555 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>כאוס גרפי</title>
+  <script src="https://cdn.tailwindcss.com">
+  </script>
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js">
+  </script>
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js">
+  </script>
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js">
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@400;700;900&display=swap');
+
+    * {
+      font-family: 'Heebo', sans-serif;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #f5f0e8;
+      min-height: 100vh;
+      direction: rtl;
+    }
+
+    .brutal-border {
+      border: 4px solid #000;
+      box-shadow: 6px 6px 0px #000;
+    }
+
+    .brutal-border-sm {
+      border: 3px solid #000;
+      box-shadow: 4px 4px 0px #000;
+    }
+
+    .brutal-btn {
+      border: 3px solid #000;
+      box-shadow: 4px 4px 0px #000;
+      transition: all 0.05s ease;
+      cursor: pointer;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .brutal-btn:active {
+      transform: translate(3px, 3px);
+      box-shadow: 1px 1px 0px #000;
+    }
+
+    .brutal-btn:disabled {
+      opacity: 0.5;
+      transform: none;
+      box-shadow: 4px 4px 0px #000;
+      cursor: not-allowed;
+    }
+
+    .brutal-input {
+      border: 3px solid #000;
+      box-shadow: 4px 4px 0px #000;
+      outline: none;
+      transition: all 0.1s;
+    }
+
+    .brutal-input:focus {
+      box-shadow: 2px 2px 0px #000;
+      transform: translate(2px, 2px);
+    }
+
+    .canvas-wrapper {
+      border: 4px solid #000;
+      box-shadow: 6px 6px 0px #000;
+      background: #fff;
+      touch-action: none;
+    }
+
+    .color-btn {
+      width: 32px;
+      height: 32px;
+      border: 3px solid #000;
+      border-radius: 0;
+      cursor: pointer;
+      transition: all 0.05s;
+    }
+
+    .color-btn.active {
+      border: 4px solid #000;
+      transform: scale(1.15);
+      box-shadow: 2px 2px 0px #000;
+    }
+
+    .width-btn {
+      border: 3px solid #000;
+      background: #fff;
+      cursor: pointer;
+      transition: all 0.05s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .width-btn.active {
+      background: #ffed4a;
+      box-shadow: 2px 2px 0px #000;
+      transform: scale(1.1);
+    }
+
+    .player-avatar {
+      width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      border: 3px solid #000;
+      background: #fff;
+    }
+
+    .player-card {
+      border: 3px solid #000;
+      background: #fff;
+      box-shadow: 4px 4px 0px #000;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+    }
+
+    .timer-ring {
+      width: 60px;
+      height: 60px;
+      border: 4px solid #000;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      font-weight: 900;
+      background: #fff;
+    }
+
+    .timer-ring.urgent {
+      border-color: #ff4444;
+      color: #ff4444;
+      animation: pulse 0.5s infinite;
+    }
+
+    @keyframes pulse {
+      0%,
+      100% {
+        transform: scale(1);
+      }
+      50% {
+        transform: scale(1.1);
+      }
+    }
+
+    .drawing-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+    }
+
+    @media (min-width: 768px) {
+      .drawing-grid {
+        grid-template-columns: repeat(4, 1fr);
+      }
+    }
+
+    .exhibition-drawing {
+      border: 4px solid #000;
+      box-shadow: 6px 6px 0px #000;
+      background: #fff;
+      overflow: hidden;
+    }
+
+    .reveal-overlay {
+      animation: fadeInScale 0.6s ease-out;
+    }
+
+    @keyframes fadeInScale {
+      0% {
+        opacity: 0;
+        transform: scale(0.5) rotate(-5deg);
+      }
+      100% {
+        opacity: 1;
+        transform: scale(1) rotate(0deg);
+      }
+    }
+
+    .stagger-in>* {
+      animation: slideUp 0.4s ease-out forwards;
+      opacity: 0;
+    }
+
+    .stagger-in>*:nth-child(1) {
+      animation-delay: 0.05s;
+    }
+    .stagger-in>*:nth-child(2) {
+      animation-delay: 0.1s;
+    }
+    .stagger-in>*:nth-child(3) {
+      animation-delay: 0.15s;
+    }
+    .stagger-in>*:nth-child(4) {
+      animation-delay: 0.2s;
+    }
+    .stagger-in>*:nth-child(5) {
+      animation-delay: 0.25s;
+    }
+    .stagger-in>*:nth-child(6) {
+      animation-delay: 0.3s;
+    }
+    .stagger-in>*:nth-child(7) {
+      animation-delay: 0.35s;
+    }
+    .stagger-in>*:nth-child(8) {
+      animation-delay: 0.4s;
+    }
+    .stagger-in>*:nth-child(9) {
+      animation-delay: 0.45s;
+    }
+    .stagger-in>*:nth-child(10) {
+      animation-delay: 0.5s;
+    }
+    .stagger-in>*:nth-child(11) {
+      animation-delay: 0.55s;
+    }
+    .stagger-in>*:nth-child(12) {
+      animation-delay: 0.6s;
+    }
+
+    @keyframes slideUp {
+      0% {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .confetti-piece {
+      position: fixed;
+      width: 12px;
+      height: 12px;
+      z-index: 9999;
+      animation: confettiFall linear forwards;
+    }
+
+    @keyframes confettiFall {
+      0% {
+        opacity: 1;
+        transform: translateY(-10vh) rotate(0deg);
+      }
+      100% {
+        opacity: 0;
+        transform: translateY(110vh) rotate(720deg);
+      }
+    }
+
+    .impostor-badge {
+      background: #000;
+      color: #fff;
+      font-weight: 900;
+      font-size: 11px;
+      padding: 2px 8px;
+      letter-spacing: 0.5px;
+    }
+
+    .host-only {
+      display: none;
+    }
+
+    .phase-drawing .drawing-tools {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    @media (max-width: 640px) {
+      .timer-ring {
+        width: 48px;
+        height: 48px;
+        font-size: 20px;
+      }
+      .player-avatar {
+        width: 40px;
+        height: 40px;
+        font-size: 20px;
+      }
+      .drawing-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+      }
+    }
+
+    .vote-count {
+      background: #000;
+      color: #fff;
+      font-weight: 700;
+      font-size: 12px;
+      padding: 0 6px;
+      min-width: 20px;
+      text-align: center;
+    }
+
+    .scrollbar-thin::-webkit-scrollbar {
+      width: 6px;
+    }
+    .scrollbar-thin::-webkit-scrollbar-track {
+      background: #f0e8d8;
+    }
+    .scrollbar-thin::-webkit-scrollbar-thumb {
+      background: #000;
+      border-radius: 0;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .badge-new {
+      background: #ff4444;
+      color: #fff;
+      font-size: 10px;
+      font-weight: 900;
+      padding: 2px 6px;
+    }
+
+    .word-display {
+      border: 4px solid #000;
+      padding: 12px 24px;
+      font-size: 28px;
+      font-weight: 900;
+      background: #ffed4a;
+      display: inline-block;
+      box-shadow: 4px 4px 0px #000;
+    }
+
+    .room-label {
+      border: 3px solid #000;
+      background: #48dbfb;
+      color: #000;
+      font-weight: 900;
+      font-size: 14px;
+      padding: 4px 12px;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app" class="min-h-screen p-4 max-w-6xl mx-auto"></div>
+
+  <script>
+    // ============================================================
+    // FIREBASE CONFIG
+    // ============================================================
+    const FIREBASE_CONFIG = window.__firebase_config || {
+      apiKey: "AIzaSyAQBpbEq-0pGHN3f9iLTX3Fx5l-VXzpYng",
+      authDomain: "tomato-go.firebaseapp.com",
+      projectId: "tomato-go",
+      storageBucket: "tomato-go.firebasestorage.app",
+      messagingSenderId: "810953923279",
+      appId: "1:810953923279:web:285b5ffb20c1bd540575ba",
+      measurementId: "G-T4XR12NX5C"
+    };
+
+    // ============================================================
+    // FIREBASE INIT
+    // ============================================================
+    firebase.initializeApp(FIREBASE_CONFIG);
+    const db = firebase.firestore();
+    const auth = firebase.auth();
+    auth.useDeviceLanguage();
+
+    // ============================================================
+    // CONSTANTS
+    // ============================================================
+    const AVATARS = ['🦊', '🐼', '🐨', '🦁', '🐯', '🐸', '🐵', '🦄', '🐧', '🐰', '🦉', '🐺', '🐙', '🦋', '🐞', '🐳'];
+    const COLORS = ['#000000', '#FF0000', '#0000FF', '#00AA00', '#FFD700', '#800080', '#FF8C00', '#FF69B4'];
+    const WIDTHS = [3, 6, 12];
+    const DRAWING_DURATION = 45;
+    const PLAYERS_PER_ROOM = 5;
+
+    const WORD_POOL = [
+      { word: 'פיצה', category: 'מאכל' },
+      { word: 'מטוס', category: 'כלי תחבורה' },
+      { word: 'גיטרה', category: 'כלי נגינה' },
+      { word: 'פיל', category: 'חיה' },
+      { word: 'מגדל אייפל', category: 'אתר מפורסם' },
+      { word: 'תמנון', category: 'יצור ימי' },
+      { word: 'כתר', category: 'אביזר מלכותי' },
+      { word: 'רובוט', category: 'מכונה' },
+      { word: 'שמש', category: 'גוף שמימי' },
+      { word: 'טירה', category: 'מבנה' },
+      { word: 'ענן', category: 'תופעת טבע' },
+      { word: 'פרח', category: 'צמח' },
+      { word: 'כינור', category: 'כלי נגינה' },
+      { word: 'כלב', category: 'חיית מחמד' },
+      { word: 'ארמון', category: 'מבנה' },
+      { word: 'רקטה', category: 'כלי תחבורה' },
+      { word: 'דבורה', category: 'חרק' },
+      { word: 'פסנתר', category: 'כלי נגינה' },
+      { word: 'כובע', category: 'אביזר לבוש' },
+      { word: 'סירה', category: 'כלי תחבורה' },
+    ];
+
+    // ============================================================
+    // STATE
+    // ============================================================
+    let state = {
+      user: null,
+      gameId: null,
+      gameRef: null,
+      unsub: null,
+      gameData: null,
+      currentScreen: 'join',
+      isHost: false,
+      isDrawer: false,
+      myRoom: null,
+      interval: null,
+      timerInterval: null,
+      // drawing state
+      drawing: {
+        canvas: null,
+        ctx: null,
+        isDrawing: false,
+        currentColor: COLORS[0],
+        currentWidth: WIDTHS[1],
+        strokes: [],
+        currentStroke: null,
+        canvasId: null,
+      },
+      revealStep: 0,
+      exhibitionCanvas: null,
+    };
+
+    // ============================================================
+    // UTILITY
+    // ============================================================
+    function randomCode() {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+      let r = '';
+      for (let i = 0; i < 4; i++) r += chars[Math.floor(Math.random() * chars.length)];
+      return r;
+    }
+
+    function shuffle(arr) {
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    function pick(arr) {
+      return arr[Math.floor(Math.random() * arr.length)];
+    }
+
+    function $(sel) {
+      return document.querySelector(sel);
+    }
+
+    function $$(sel) {
+      return document.querySelectorAll(sel);
+    }
+
+    function sleep(ms) {
+      return new Promise(r => setTimeout(r, ms));
+    }
+
+    // ============================================================
+    // AUTH
+    // ============================================================
+    async function ensureAuth() {
+      if (state.user) return state.user;
+      try {
+        const cred = await auth.signInAnonymously();
+        state.user = cred.user;
+        return cred.user;
+      } catch (e) {
+        console.error('Auth error:', e);
+        if (e.code === 'auth/operation-not-allowed') {
+          throw new Error('לא הופעל אימות אנונימי בפיירבייס. כנס לקונסול: Authentication → Sign-in method → Anonymous → הפעל');
+        }
+        throw e;
+      }
+    }
+
+    // ============================================================
+    // GAME OPERATIONS
+    // ============================================================
+    async function createGame(playerName) {
+      await ensureAuth();
+      const gameId = randomCode();
+      const avatar = pick(AVATARS);
+      const player = {
+        id: state.user.uid,
+        name: playerName,
+        avatar: avatar,
+        roomIndex: null,
+        isImpostor: false,
+        word: '',
+        category: '',
+        score: 0,
+      };
+
+      const gameData = {
+        hostId: state.user.uid,
+        phase: 'lobby',
+        players: {
+          [state.user.uid]: player
+        },
+        playerOrder: [state.user.uid],
+        rooms: [],
+        votes: {},
+        startedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        turnStartTime: null,
+        playersPerRoom: PLAYERS_PER_ROOM,
+        drawingDuration: DRAWING_DURATION,
+      };
+
+      await db.collection('games').doc(gameId).set(gameData);
+      state.gameId = gameId;
+      state.gameRef = db.collection('games').doc(gameId);
+      state.isHost = true;
+      subscribeToGame();
+      return gameId;
+    }
+
+    async function joinGame(gameId, playerName) {
+      await ensureAuth();
+      const doc = await db.collection('games').doc(gameId).get();
+      if (!doc.exists) throw new Error('החדר לא נמצא');
+      const data = doc.data();
+      if (data.phase !== 'lobby') throw new Error('המשחק כבר התחיל');
+
+      const avatar = pick(AVATARS);
+      const player = {
+        id: state.user.uid,
+        name: playerName,
+        avatar: avatar,
+        roomIndex: null,
+        isImpostor: false,
+        word: '',
+        category: '',
+        score: 0,
+      };
+
+      await db.collection('games').doc(gameId).update({
+        [`players.${state.user.uid}`]: player,
+        playerOrder: firebase.firestore.FieldValue.arrayUnion(state.user.uid),
+      });
+
+      state.gameId = gameId;
+      state.gameRef = db.collection('games').doc(gameId);
+      state.isHost = false;
+      subscribeToGame();
+      return gameId;
+    }
+
+    function subscribeToGame() {
+      if (state.unsub) state.unsub();
+      state.unsub = state.gameRef.onSnapshot(doc => {
+        if (!doc.exists) {
+          alert('המשחק נמחק');
+          resetState();
+          render();
+          return;
+        }
+        const data = doc.data();
+        state.gameData = data;
+        handleGameUpdate(data);
+        if (shouldFullRender(data)) render();
+        else if (data.phase === 'lobby') render();
+        else if (data.phase === 'drawing') {
+          // Canvas updates via _drawWatch, no full re-render
+        } else {
+          render();
+        }
+      }, err => {
+        console.error('Snapshot error:', err);
+        if (err.code === 'permission-denied') {
+          alert(`❌ אין הרשאה לפיירבייס.
+כנס לקונסול פיירבייס:
+1. Authentication → Sign-in method → Anonymous → הפעל
+2. Firestore → Rules → שנה ל:
+   rules_version = '2';
+   service cloud.firestore {
+     match /databases/{database}/documents {
+       match /{document=**} {
+         allow read, write: if request.auth != null;
+       }
+     }
+   }`);
+        } else if (err.code === 'unavailable' || err.code === 'not-found') {
+          // Transient error, retry
+        } else {
+          alert('שגיאת התחברות לפיירבייס: ' + err.message);
+        }
+      });
+    }
+
+    let lastPhase = null;
+    let lastStrokesHash = null;
+
+    function handleGameUpdate(data) {
+      const me = data.players?.[state.user?.uid];
+      if (me) {
+        state.myRoom = me.roomIndex;
+      }
+      if (data.hostId === state.user?.uid) {
+        state.isHost = true;
+      }
+      if (data.phase !== lastPhase) {
+        if (data.phase === 'reveal') state.revealStep = 0;
+        if (state.timerInterval) { clearInterval(state.timerInterval); state.timerInterval = null; }
+        if (window._drawWatch) { clearInterval(window._drawWatch); window._drawWatch = null; }
+        lastPhase = data.phase;
+      }
+    }
+
+    function shouldFullRender(data) {
+      return data.phase !== lastPhase;
+    }
+
+    async function startGame() {
+      if (!state.isHost || !state.gameData) return;
+      const data = state.gameData;
+      const players = Object.values(data.players);
+      if (players.length < 4) {
+        alert('צריך לפחות 4 שחקנים כדי להתחיל');
+        return;
+      }
+
+      const roomSize = data.playersPerRoom || PLAYERS_PER_ROOM;
+      const shuffled = shuffle(players);
+      const numRooms = Math.max(1, Math.round(shuffled.length / roomSize));
+      const rooms = [];
+
+      // Distribute players evenly across rooms
+      const roomAllocations = [];
+      for (let i = 0; i < numRooms; i++) {
+        const start = Math.floor(i * shuffled.length / numRooms);
+        const end = Math.floor((i + 1) * shuffled.length / numRooms);
+        roomAllocations.push(shuffled.slice(start, end));
+      }
+
+      for (let i = 0; i < roomAllocations.length; i++) {
+        const roomPlayers = roomAllocations[i];
+        if (roomPlayers.length < 2) continue;
+        const wordEntry = WORD_POOL[i % WORD_POOL.length];
+        const impostorIdx = Math.floor(Math.random() * roomPlayers.length);
+
+        const room = {
+          index: i,
+          playerIds: roomPlayers.map(p => p.id),
+          word: wordEntry.word,
+          category: wordEntry.category,
+          impostorIndex: impostorIdx,
+          currentDrawerIndex: 0,
+          drawingState: 'drawing',
+          strokes: [],
+          turnStartTime: null,
+        };
+        rooms.push(room);
+      }
+
+      // build player updates
+      const playerUpdates = {};
+      for (const room of rooms) {
+        for (let j = 0; j < room.playerIds.length; j++) {
+          const pid = room.playerIds[j];
+          const isImp = j === room.impostorIndex;
+          const existing = data.players[pid];
+          playerUpdates[`players.${pid}.roomIndex`] = room.index;
+          playerUpdates[`players.${pid}.isImpostor`] = isImp;
+          playerUpdates[`players.${pid}.word`] = isImp ? room.category : room.word;
+          playerUpdates[`players.${pid}.category`] = room.category;
+        }
+      }
+
+      const turnStart = Date.now();
+      const updateData = {
+        ...playerUpdates,
+        rooms: rooms.map(r => ({
+          ...r,
+          turnStartTime: turnStart,
+        })),
+        phase: 'drawing',
+        turnStartTime: turnStart,
+        drawingEndTime: turnStart + DRAWING_DURATION * 1000,
+        votes: {},
+      };
+
+      await state.gameRef.update(updateData);
+    }
+
+    // ============================================================
+    // DRAWING - REAL-TIME COLLABORATIVE
+    // ============================================================
+    function setupCollaborativeCanvas(canvasEl, roomIndex, existingStrokes) {
+      if (!canvasEl) return;
+
+      const container = canvasEl.parentElement;
+      const dpr = window.devicePixelRatio || 1;
+      const w = container.clientWidth;
+      const h = container.clientHeight;
+      canvasEl.width = w * dpr;
+      canvasEl.height = h * dpr;
+      canvasEl.style.width = w + 'px';
+      canvasEl.style.height = h + 'px';
+
+      const ctx = canvasEl.getContext('2d');
+      ctx.scale(dpr, dpr);
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      state.drawing.canvas = canvasEl;
+      state.drawing.ctx = ctx;
+      state.drawing.canvasId = `canvas-${roomIndex}-${Date.now()}`;
+      state.drawing.strokes = existingStrokes ? JSON.parse(JSON.stringify(existingStrokes)) : [];
+      state.drawing.currentStroke = null;
+      state.drawing.isDrawing = false;
+
+      redrawCanvas(ctx, w, h, state.drawing.strokes);
+
+      const onStart = (e) => {
+        e.preventDefault();
+        const pos = getCanvasPos(canvasEl, e);
+        state.drawing.isDrawing = true;
+        state.drawing.currentStroke = {
+          playerId: state.user.uid,
+          color: state.drawing.currentColor,
+          width: state.drawing.currentWidth,
+          points: [pos],
+        };
+      };
+
+      const onMove = (e) => {
+        e.preventDefault();
+        if (!state.drawing.isDrawing || !state.drawing.currentStroke) return;
+        const pos = getCanvasPos(canvasEl, e);
+        const last = state.drawing.currentStroke.points[state.drawing.currentStroke.points.length - 1];
+        if (!last || dist(pos, last) > 1) {
+          state.drawing.currentStroke.points.push(pos);
+          drawStrokeSegment(ctx, last || pos, pos, state.drawing.currentStroke.color, state.drawing
+          .currentStroke.width);
+        }
+      };
+
+      const onEnd = (e) => {
+        e.preventDefault();
+        if (!state.drawing.isDrawing) return;
+        state.drawing.isDrawing = false;
+        if (state.drawing.currentStroke && state.drawing.currentStroke.points.length > 1) {
+          const completed = state.drawing.currentStroke;
+          state.drawing.strokes.push(completed);
+          saveStrokeRealtime(completed);
+        }
+        state.drawing.currentStroke = null;
+      };
+
+      canvasEl.addEventListener('pointerdown', onStart);
+      canvasEl.addEventListener('pointermove', onMove);
+      canvasEl.addEventListener('pointerup', onEnd);
+      canvasEl.addEventListener('pointerleave', onEnd);
+      canvasEl.addEventListener('pointercancel', onEnd);
+      canvasEl.addEventListener('touchstart', e => e.preventDefault(), { passive: false });
+
+      const onResize = () => {
+        if (state.drawing.canvas !== canvasEl) return;
+        const newW = container.clientWidth;
+        const newH = container.clientHeight;
+        canvasEl.width = newW * dpr;
+        canvasEl.height = newH * dpr;
+        canvasEl.style.width = newW + 'px';
+        canvasEl.style.height = newH + 'px';
+        ctx.scale(dpr, dpr);
+        redrawCanvas(ctx, newW, newH, state.drawing.strokes);
+      };
+
+      window.addEventListener('resize', onResize);
+      canvasEl._cleanup = () => {
+        window.removeEventListener('resize', onResize);
+        canvasEl.removeEventListener('pointerdown', onStart);
+        canvasEl.removeEventListener('pointermove', onMove);
+        canvasEl.removeEventListener('pointerup', onEnd);
+        canvasEl.removeEventListener('pointerleave', onEnd);
+        canvasEl.removeEventListener('pointercancel', onEnd);
+      };
+
+      return { w, h };
+    }
+
+    function saveStrokeRealtime(stroke) {
+      if (!state.gameData || state.myRoom === null) return;
+      try {
+        state.gameRef.update({
+          [`rooms.${state.myRoom}.strokes`]: firebase.firestore.FieldValue.arrayUnion(stroke),
+        });
+      } catch (e) {
+        console.error('Save stroke error:', e);
+      }
+    }
+
+    function getCanvasPos(canvas, e) {
+      const rect = canvas.getBoundingClientRect();
+      const x = (e.clientX || (e.touches?.[0]?.clientX ?? 0)) - rect.left;
+      const y = (e.clientY || (e.touches?.[0]?.clientY ?? 0)) - rect.top;
+      return { x: Math.max(0, Math.min(x, rect.width)), y: Math.max(0, Math.min(y, rect.height)) };
+    }
+
+    function dist(a, b) {
+      return Math.hypot(a.x - b.x, a.y - b.y);
+    }
+
+    function drawStrokeSegment(ctx, from, to, color, width) {
+      ctx.beginPath();
+      ctx.moveTo(from.x, from.y);
+      ctx.lineTo(to.x, to.y);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.stroke();
+    }
+
+    function redrawCanvas(ctx, w, h, strokes) {
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, w, h);
+      for (const s of strokes) {
+        if (!s.points || s.points.length < 2) continue;
+        ctx.beginPath();
+        ctx.moveTo(s.points[0].x, s.points[0].y);
+        for (let i = 1; i < s.points.length; i++) {
+          ctx.lineTo(s.points[i].x, s.points[i].y);
+        }
+        ctx.strokeStyle = s.color;
+        ctx.lineWidth = s.width;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.stroke();
+      }
+    }
+
+    function clearCanvas() {
+      if (!state.drawing.ctx || !state.drawing.canvas) return;
+      state.drawing.strokes = [];
+      const ctx = state.drawing.ctx;
+      const canvas = state.drawing.canvas;
+      const w = canvas.width / (window.devicePixelRatio || 1);
+      const h = canvas.height / (window.devicePixelRatio || 1);
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, w, h);
+    }
+
+    // ============================================================
+    // VOTING
+    // ============================================================
+    async function castVote(targetPlayerId) {
+      if (!state.gameData || !state.user) return;
+      await state.gameRef.update({
+        [`votes.${state.user.uid}`]: targetPlayerId,
+      });
+    }
+
+    function allVotesIn(data) {
+      const players = Object.values(data.players).filter(p => p.roomIndex !== null);
+      const voterIds = players.map(p => p.id);
+      const votedIds = Object.keys(data.votes || {});
+      return voterIds.every(id => votedIds.includes(id));
+    }
+
+    async function advanceToReveal() {
+      if (!state.isHost) return;
+      // Calculate scores
+      const data = state.gameData;
+      const rooms = data.rooms;
+      const votes = data.votes || {};
+      const playerUpdates = {};
+
+      for (const room of rooms) {
+        const impostorId = room.playerIds[room.impostorIndex];
+        const roomVotes = Object.entries(votes)
+          .filter(([voterId]) => room.playerIds.includes(voterId))
+          .map(([voterId, targetId]) => ({ voterId, targetId }));
+
+        const votesForImpostor = roomVotes.filter(v => v.targetId === impostorId).length;
+        const totalVoters = roomVotes.length;
+        const impostorCaught = votesForImpostor > totalVoters / 2;
+
+        for (const pid of room.playerIds) {
+          let scoreChange = 0;
+          if (pid === impostorId) {
+            scoreChange = impostorCaught ? 0 : 20;
+          } else {
+            const myVote = roomVotes.find(v => v.voterId === pid);
+            if (myVote && myVote.targetId === impostorId) {
+              scoreChange = 10;
+            }
+          }
+          playerUpdates[`players.${pid}.score`] = firebase.firestore.FieldValue.increment(scoreChange);
+        }
+      }
+
+      await state.gameRef.update({
+        phase: 'reveal',
+        ...playerUpdates,
+      });
+    }
+
+    async function advanceToExhibition() {
+      if (!state.isHost) return;
+      await state.gameRef.update({
+        phase: 'exhibition',
+      });
+    }
+
+    // ============================================================
+    // RENDER
+    // ============================================================
+    function render() {
+      const app = $('#app');
+      const data = state.gameData;
+      if (!data) {
+        renderJoin(app);
+        return;
+      }
+
+      switch (data.phase) {
+        case 'lobby':
+          renderLobby(app, data);
+          break;
+        case 'drawing':
+          renderDrawing(app, data);
+          break;
+        case 'exhibition':
+          renderExhibition(app, data);
+          break;
+        case 'reveal':
+          renderReveal(app, data);
+          break;
+        default:
+          renderJoin(app);
+      }
+    }
+
+    // ---- JOIN SCREEN ----
+    function renderJoin(container) {
+      container.innerHTML = `
+        <div class="min-h-screen flex items-center justify-center">
+          <div class="w-full max-w-md">
+            <div class="brutal-border bg-yellow-300 p-8 text-center mb-8" style="transform:rotate(-1deg)">
+              <h1 class="text-5xl font-black mb-2">כאוס גרפי</h1>
+              <p class="text-lg font-bold">משחק הציור ההמוני</p>
+            </div>
+            <div class="brutal-border bg-white p-6 space-y-4">
+              <div>
+                <label class="block font-bold mb-1">השם שלך</label>
+                <input id="join-name" class="brutal-input w-full p-3 text-lg font-bold" placeholder="אורי" maxlength="12" value="${state.user?.displayName || ''}">
+              </div>
+              <div>
+                <label class="block font-bold mb-1">קוד חדר</label>
+                <div class="flex gap-2">
+                  <input id="join-code" class="brutal-input flex-1 p-3 text-lg font-bold text-center tracking-widest uppercase" placeholder="ABCD" maxlength="4" style="letter-spacing:4px">
+                  <button id="btn-join" class="brutal-btn bg-blue-400 px-6 py-3 text-lg font-bold">הצטרף</button>
+                </div>
+              </div>
+              <div class="text-center">
+                <div class="border-t-4 border-dashed border-black my-4"></div>
+                <button id="btn-create" class="brutal-btn bg-pink-400 w-full py-4 text-xl font-bold">צור משחק חדש</button>
+              </div>
+            </div>
+            <div id="join-error" class="mt-4 brutal-border-sm bg-red-300 p-3 font-bold hidden"></div>
+          </div>
+        </div>
+      `;
+
+      $('#join-name').addEventListener('input', () => {
+        state.playerName = $('#join-name').value;
+      });
+      $('#btn-create').addEventListener('click', async () => {
+        const name = $('#join-name').value.trim();
+        if (!name) { showError('נא להזין שם'); return; }
+        try {
+          const gid = await createGame(name);
+          state.playerName = name;
+        } catch (e) { showError(e.message); }
+      });
+      $('#btn-join').addEventListener('click', async () => {
+        const name = $('#join-name').value.trim();
+        const code = $('#join-code').value.trim().toUpperCase();
+        if (!name) { showError('נא להזין שם'); return; }
+        if (!code || code.length !== 4) { showError('נא להזין קוד חדר תקין (4 אותיות)'); return; }
+        try {
+          await joinGame(code, name);
+          state.playerName = name;
+        } catch (e) { showError(e.message); }
+      });
+      $('#join-code').addEventListener('keydown', e => {
+        if (e.key === 'Enter') $('#btn-join').click();
+      });
+      $('#join-name').addEventListener('keydown', e => {
+        if (e.key === 'Enter') $('#btn-create').click();
+      });
+    }
+
+    function showError(msg) {
+      const el = $('#join-error');
+      if (el) { el.textContent = msg;
+        el.classList.remove('hidden'); }
+    }
+
+    // ---- LOBBY ----
+    function renderLobby(container, data) {
+      const players = Object.values(data.players || {});
+      const isHost = state.isHost;
+
+      container.innerHTML = `
+        <div class="max-w-3xl mx-auto">
+          <div class="text-center mb-6">
+            <h1 class="text-4xl font-black mb-2">🎨 כאוס גרפי</h1>
+            <div class="brutal-border-sm bg-white inline-block px-6 py-2">
+              <span class="font-bold">קוד חדר:</span>
+              <span class="text-2xl font-black tracking-widest ml-2">${state.gameId}</span>
+            </div>
+          </div>
+
+          <div class="brutal-border bg-white p-6 mb-6">
+            <div class="flex justify-between items-center mb-4">
+              <h2 class="text-xl font-black">שחקנים (${players.length})</h2>
+              ${isHost ? `<button id="btn-start" class="brutal-btn bg-green-400 px-6 py-2 text-lg font-bold">התחל משחק!</button>` : `<div class="font-bold text-gray-500">ממתין שהמארח יתחיל...</div>`}
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 stagger-in">
+              ${players.map(p => `
+                <div class="player-card">
+                  <div class="player-avatar">${p.avatar}</div>
+                  <span class="font-bold text-sm truncate">${p.name}</span>
+                  ${p.id === data.hostId ? '<span class="impostor-badge mr-auto">מארח</span>' : ''}
+                </div>
+              `).join('')}
+            </div>
+          </div>
+
+          <div class="brutal-border-sm bg-yellow-200 p-4 text-center">
+            <p class="font-bold">📱 שתף את קוד החדר עם החברים!</p>
+            <p class="text-sm">כולם צריכים להזין את הקוד במכשיר שלהם</p>
+          </div>
+        </div>
+      `;
+
+      if (isHost) {
+        $('#btn-start').addEventListener('click', startGame);
+      }
+    }
+
+    // ---- DRAWING (COLLABORATIVE) ----
+    function renderDrawing(container, data) {
+      const me = data.players?.[state.user?.uid];
+      if (!me || me.roomIndex === null || me.roomIndex === undefined) {
+        container.innerHTML = `<div class="text-center p-8"><div class="brutal-border bg-red-300 p-6 font-bold text-xl">אירעה שגיאה - לא שובצת לחדר</div></div>`;
+        return;
+      }
+
+      const room = data.rooms[me.roomIndex];
+      if (!room) {
+        container.innerHTML = `<div class="text-center p-8"><div class="brutal-border bg-red-300 p-6 font-bold text-xl">אירעה שגיאה - החדר לא נמצא</div></div>`;
+        return;
+      }
+
+      if (state.timerInterval) { clearInterval(state.timerInterval); state.timerInterval = null; }
+      if (window._drawWatch) { clearInterval(window._drawWatch); window._drawWatch = null; }
+
+      const roomPlayers = room.playerIds.map(pid => data.players[pid]).filter(Boolean);
+      const endTime = data.drawingEndTime || (Date.now() + DRAWING_DURATION * 1000);
+      const remaining = Math.max(0, Math.ceil((endTime - Date.now()) / 1000));
+
+      container.innerHTML = `
+        <div class="max-w-lg mx-auto">
+          <div class="flex items-center justify-between mb-2">
+            <div class="room-label">חדר ${me.roomIndex + 1}</div>
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-sm">${roomPlayers.length} שחקנים</span>
+              <div id="drawing-timer" class="timer-ring ${remaining <= 5 ? 'urgent' : ''}">${remaining}</div>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap gap-1 mb-2">
+            ${roomPlayers.map(p => `
+              <div class="flex items-center gap-1 bg-white border-2 border-black px-2 py-0.5 text-xs font-bold">
+                <span>${p.avatar}</span>
+                <span>${p.name}</span>
+              </div>
+            `).join('')}
+          </div>
+
+          <div class="text-center mb-3">
+            ${!me.isImpostor ? `
+              <div class="word-display">${me.word}</div>
+            ` : `
+              <div>
+                <div class="word-display" style="background:#ff6b6b">${me.word}</div>
+                <div class="text-sm font-bold mt-1">🕵️ אתה המתחזה! נסה להתאים את עצמך למילה האמיתית</div>
+              </div>
+            `}
+          </div>
+
+          <div class="canvas-wrapper relative" style="aspect-ratio:4/3;max-height:60vh">
+            <canvas id="draw-canvas"></canvas>
+          </div>
+
+          <div class="mt-3 flex flex-wrap items-center gap-2 drawing-tools">
+            <div class="flex gap-1">
+              ${COLORS.map(c => `
+                <button class="color-btn ${c === state.drawing.currentColor ? 'active' : ''}" data-color="${c}" style="background:${c}"></button>
+              `).join('')}
+            </div>
+            <div class="flex gap-1 mr-2">
+              ${WIDTHS.map((w) => `
+                <button class="width-btn ${w === state.drawing.currentWidth ? 'active' : ''}" data-width="${w}" style="width:36px;height:36px">
+                  <div style="width:${w+2}px;height:${w+2}px;background:#000;border-radius:50%"></div>
+                </button>
+              `).join('')}
+            </div>
+            <button id="btn-clear-local" class="brutal-btn bg-red-300 px-3 py-1 font-bold text-sm">נקה את שלי</button>
+          </div>
+
+          ${state.isHost ? `
+            <div class="mt-3 brutal-border-sm bg-white p-3">
+              <div class="flex justify-between items-center">
+                <span class="font-bold text-sm">כולם מציירים בו-זמנית</span>
+                <button id="btn-advance-exh" class="brutal-btn bg-blue-400 px-4 py-1 text-sm font-bold">סיום ציור → תערוכה</button>
+              </div>
+            </div>
+          ` : ''}
+        </div>
+      `;
+
+      const canvasEl = $('#draw-canvas');
+      if (canvasEl) {
+        if (canvasEl._cleanup) canvasEl._cleanup();
+        setupCollaborativeCanvas(canvasEl, me.roomIndex, room.strokes || []);
+
+        $$('.color-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            state.drawing.currentColor = btn.dataset.color;
+            $$('.color-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+          });
+        });
+
+        $$('.width-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            state.drawing.currentWidth = parseInt(btn.dataset.width);
+            $$('.width-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+          });
+        });
+
+        const clearBtn = $('#btn-clear-local');
+        if (clearBtn) clearBtn.addEventListener('click', () => {
+          if (!state.gameData || state.myRoom === null) return;
+          const roomStrokes = state.gameData.rooms[state.myRoom]?.strokes || [];
+          const otherStrokes = roomStrokes.filter(s => s.playerId !== state.user.uid);
+          state.drawing.strokes = JSON.parse(JSON.stringify(otherStrokes));
+          const canvas = state.drawing.canvas;
+          if (canvas) {
+            const dpr = window.devicePixelRatio || 1;
+            const w = canvas.width / dpr;
+            const h = canvas.height / dpr;
+            redrawCanvas(state.drawing.ctx, w, h, state.drawing.strokes);
+          }
+        });
+      }
+
+      // Poll for new strokes from other players
+      if (window._drawWatch) clearInterval(window._drawWatch);
+      window._drawWatch = setInterval(() => {
+        if (!state.gameData || state.myRoom === null) return;
+        const r = state.gameData.rooms[state.myRoom];
+        if (!r) return;
+        const canvas = $('#draw-canvas');
+        if (!canvas || !state.drawing.ctx) return;
+        if (state.drawing.isDrawing) return;
+        if (r.strokes && r.strokes.length > 0) {
+          const allStrokes = r.strokes;
+          const localStrokes = state.drawing.strokes;
+          if (allStrokes.length > localStrokes.length) {
+            state.drawing.strokes = JSON.parse(JSON.stringify(allStrokes));
+            const dpr = window.devicePixelRatio || 1;
+            const w = canvas.width / dpr;
+            const h = canvas.height / dpr;
+            redrawCanvas(state.drawing.ctx, w, h, state.drawing.strokes);
+          }
+        }
+      }, 400);
+
+      // Countdown timer
+      const timerEl = $('#drawing-timer');
+      if (timerEl) {
+        state.timerInterval = setInterval(() => {
+          const e = data.drawingEndTime || (Date.now() + DRAWING_DURATION * 1000);
+          const r = Math.max(0, Math.ceil((e - Date.now()) / 1000));
+          timerEl.textContent = r;
+          timerEl.className = 'timer-ring' + (r <= 5 ? ' urgent' : '');
+          if (r <= 0 && state.isHost) {
+            clearInterval(state.timerInterval);
+            state.timerInterval = null;
+          }
+        }, 200);
+      }
+
+      const advBtn = $('#btn-advance-exh');
+      if (advBtn) advBtn.addEventListener('click', () => {
+        if (state.timerInterval) { clearInterval(state.timerInterval); state.timerInterval = null; }
+        state.gameRef.update({ phase: 'exhibition' });
+      });
+    }
+
+    // ---- EXHIBITION ----
+    function renderExhibition(container, data) {
+      const rooms = data.rooms || [];
+      const me = data.players?.[state.user?.uid];
+      const myRoomIndex = me?.roomIndex;
+
+      // Check if user has voted
+      const hasVoted = data.votes && data.votes[state.user?.uid];
+
+      container.innerHTML = `
+        <div class="max-w-5xl mx-auto">
+          <div class="text-center mb-6">
+            <h1 class="text-4xl font-black mb-2">🖼️ תערוכת הכאוס</h1>
+            <p class="font-bold text-lg">כל הציורים לפניך! הצבע על המתחזה בחדר שלך</p>
+          </div>
+
+          <div class="drawing-grid stagger-in">
+            ${rooms.map((room, ri) => {
+              const roomPlayers = room.playerIds.map(pid => data.players[pid]).filter(Boolean);
+              const canvasId = `exh-canvas-${ri}`;
+              return `
+                <div class="exhibition-drawing">
+                  <div class="bg-black text-white font-bold text-center py-1 text-sm">חדר ${ri+1}</div>
+                  <div class="p-2">
+                    <div style="aspect-ratio:4/3;background:#fff;position:relative">
+                      <canvas id="${canvasId}" style="width:100%;height:100%"></canvas>
+                    </div>
+                    <div class="flex flex-wrap gap-1 mt-2">
+                      ${roomPlayers.map(p => `
+                        <div class="flex items-center gap-1 bg-gray-100 border-2 border-black px-2 py-1 text-xs font-bold">
+                          <span>${p.avatar}</span>
+                          <span>${p.name}</span>
+                          ${p.id === data.hostId ? '<span class="impostor-badge" style="font-size:9px">מארח</span>' : ''}
+                        </div>
+                      `).join('')}
+                    </div>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+
+          ${!hasVoted && myRoomIndex !== null && myRoomIndex !== undefined ? `
+            <div id="vote-section" class="mt-6 brutal-border bg-white p-6">
+              <h2 class="text-xl font-black mb-3">🗳️ הצבע על המתחזה בחדר ${myRoomIndex+1}</h2>
+              <p class="text-sm font-bold mb-3">מי לדעתך הוא המתחזה?</p>
+              <div class="flex flex-wrap gap-3">
+                ${(data.rooms[myRoomIndex]?.playerIds || [])
+                  .filter(pid => pid !== state.user?.uid)
+                  .map(pid => {
+                    const p = data.players[pid];
+                    if (!p) return '';
+                    return `
+                      <button class="vote-player-btn brutal-btn bg-white px-4 py-3 flex items-center gap-2 hover:bg-yellow-200" data-target="${pid}">
+                        <span class="text-2xl">${p.avatar}</span>
+                        <span class="font-bold">${p.name}</span>
+                      </button>
+                    `;
+                  }).join('')}
+              </div>
+            </div>
+          ` : hasVoted ? `
+            <div class="mt-6 brutal-border-sm bg-green-200 p-4 text-center">
+              <p class="font-bold text-lg">✅ הצבעת! ממתין לשאר השחקנים...</p>
+            </div>
+          ` : ''}
+
+          ${state.isHost && allVotesIn(data) ? `
+            <div class="mt-6 text-center">
+              <button id="btn-to-reveal" class="brutal-btn bg-pink-400 px-8 py-4 text-xl font-bold">🔍 גלו את המתחזים!</button>
+            </div>
+          ` : state.isHost ? `
+            <div class="mt-6 text-center">
+              <div class="brutal-border-sm bg-yellow-100 p-4 font-bold">
+                ממתין להצבעות... (${Object.keys(data.votes || {}).length}/${Object.values(data.players).filter(p => p.roomIndex !== null).length})
+              </div>
+            </div>
+          ` : ''}
+        </div>
+      `;
+
+      // Render drawings on the canvases
+      setTimeout(() => {
+        rooms.forEach((room, ri) => {
+          const canvasEl = document.getElementById(`exh-canvas-${ri}`);
+          if (!canvasEl) return;
+          const container_ = canvasEl.parentElement;
+          const dpr = window.devicePixelRatio || 1;
+          const w = container_.clientWidth;
+          const h = container_.clientHeight;
+          canvasEl.width = w * dpr;
+          canvasEl.height = h * dpr;
+          canvasEl.style.width = w + 'px';
+          canvasEl.style.height = h + 'px';
+          const ctx = canvasEl.getContext('2d');
+          ctx.scale(dpr, dpr);
+          redrawCanvas(ctx, w, h, room.strokes || []);
+        });
+      }, 50);
+
+      // Vote buttons
+      $$('.vote-player-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const target = btn.dataset.target;
+          btn.disabled = true;
+          btn.textContent = '✅ הצבעת!';
+          await castVote(target);
+        });
+      });
+
+      // Advance to reveal
+      const revealBtn = $('#btn-to-reveal');
+      if (revealBtn) revealBtn.addEventListener('click', advanceToReveal);
+    }
+
+    // ---- REVEAL ----
+    function renderReveal(container, data) {
+      const rooms = data.rooms || [];
+      const me = data.players?.[state.user?.uid];
+
+      if (!state.revealStep) state.revealStep = 0;
+
+      // If all rooms revealed, show leaderboard
+      if (state.revealStep >= rooms.length) {
+        renderLeaderboard(container, data);
+        return;
+      }
+
+      const room = rooms[state.revealStep];
+      const impostorId = room.playerIds[room.impostorIndex];
+      const impostor = data.players[impostorId];
+      const roomPlayers = room.playerIds.map(pid => data.players[pid]).filter(Boolean);
+      const votes = Object.entries(data.votes || {})
+        .filter(([voterId]) => room.playerIds.includes(voterId))
+        .map(([voterId, targetId]) => ({ voterId, targetId }));
+
+      const votesForImpostor = votes.filter(v => v.targetId === impostorId).length;
+      const totalVoters = votes.length;
+      const impostorCaught = votesForImpostor > totalVoters / 2;
+
+      container.innerHTML = `
+        <div class="max-w-3xl mx-auto reveal-overlay">
+          <div class="text-center mb-6">
+            <h1 class="text-4xl font-black mb-2">🔍 חשיפה! חדר ${state.revealStep+1}</h1>
+          </div>
+
+          <div class="brutal-border bg-white p-6 mb-6">
+            <div style="aspect-ratio:4/3;max-height:40vh;background:#fff" class="mb-4">
+              <canvas id="reveal-canvas" style="width:100%;height:100%"></canvas>
+            </div>
+
+            <div class="flex flex-wrap gap-2 mb-4 justify-center">
+              ${roomPlayers.map(p => `
+                <div class="player-card ${p.id === impostorId ? 'bg-red-100 border-red-500' : ''}">
+                  <div class="player-avatar" style="width:40px;height:40px;font-size:20px">${p.avatar}</div>
+                  <span class="font-bold">${p.name}</span>
+                  ${p.id === impostorId ? '<span class="impostor-badge">🕵️ מִתְחַזֶה</span>' : ''}
+                  ${(votes.find(v => v.voterId === p.id)?.targetId) ? `
+                    <span class="text-xs font-bold mr-1">
+                      → ${data.players[votes.find(v => v.voterId === p.id).targetId]?.name || '?'}
+                    </span>
+                  ` : ''}
+                  ${(votes.find(v => v.voterId === p.id)?.targetId === impostorId) ? '✅' : (votes.find(v => v.voterId === p.id) ? '❌' : '')}
+                </div>
+              `).join('')}
+            </div>
+
+            <div class="brutal-border-sm ${impostorCaught ? 'bg-green-200' : 'bg-red-200'} p-4 text-center mb-4">
+              <p class="text-xl font-black">
+                ${impostorCaught
+                  ? `🕵️ ${impostor?.name || 'המתחזה'} נתפס! (${votesForImpostor}/${totalVoters} הצביעו נכון)`
+                  : `🏃 ${impostor?.name || 'המתחזה'} הצליח לברוח! (רק ${votesForImpostor}/${totalVoters} זיהו אותו)`}
+              </p>
+            </div>
+          </div>
+
+          ${state.isHost ? `
+            <div class="text-center">
+              <button id="btn-next-reveal" class="brutal-btn bg-blue-400 px-8 py-3 text-xl font-bold">
+                ${state.revealStep < rooms.length - 1 ? 'הבא →' : '🏆 לוח הניקוד'}
+              </button>
+            </div>
+          ` : `
+            <div class="text-center">
+              <div class="brutal-border-sm bg-yellow-100 p-4 font-bold">ממתין שהמארח יעבור לשלב הבא...</div>
+            </div>
+          `}
+        </div>
+      `;
+
+      // Draw on canvas
+      setTimeout(() => {
+        const canvasEl = $('#reveal-canvas');
+        if (!canvasEl) return;
+        const container_ = canvasEl.parentElement;
+        const dpr = window.devicePixelRatio || 1;
+        const w = container_.clientWidth;
+        const h = container_.clientHeight;
+        canvasEl.width = w * dpr;
+        canvasEl.height = h * dpr;
+        canvasEl.style.width = w + 'px';
+        canvasEl.style.height = h + 'px';
+        const ctx = canvasEl.getContext('2d');
+        ctx.scale(dpr, dpr);
+        redrawCanvas(ctx, w, h, room.strokes || []);
+      }, 50);
+
+      const nextBtn = $('#btn-next-reveal');
+      if (nextBtn) {
+        nextBtn.addEventListener('click', () => {
+          state.revealStep++;
+          render();
+          if (state.revealStep >= rooms.length) {
+            spawnConfetti();
+          }
+        });
+      }
+    }
+
+    function renderLeaderboard(container, data) {
+      const players = Object.values(data.players || {}).sort((a, b) => (b.score || 0) - (a.score || 0));
+      const maxScore = players[0]?.score || 0;
+
+      container.innerHTML = `
+        <div class="max-w-2xl mx-auto reveal-overlay">
+          <div class="text-center mb-8">
+            <h1 class="text-5xl font-black mb-2">🏆 לוח הניקוד</h1>
+            <p class="text-lg font-bold">כאוס גרפי - תוצאות סופיות</p>
+          </div>
+
+          <div class="brutal-border bg-white p-6">
+            ${players.map((p, i) => `
+              <div class="flex items-center gap-3 ${i > 0 ? 'border-t-4 border-dashed border-black' : ''} py-3 stagger-in" style="animation-delay:${i*0.1}s">
+                <div class="text-2xl font-black w-10 text-center">${i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i+1}`}</div>
+                <div class="player-avatar" style="width:44px;height:44px;font-size:22px">${p.avatar}</div>
+                <div class="flex-1">
+                  <div class="font-bold text-lg">${p.name} ${p.id === data.hostId ? '(מארח)' : ''}</div>
+                  <div class="text-sm">${p.isImpostor ? '🕵️ היה מתחזה' : '🎨 היה צייר'} | חדר ${(p.roomIndex ?? 0)+1}</div>
+                </div>
+                <div class="text-3xl font-black" style="color:${p.score === maxScore && p.score > 0 ? '#FFD700' : '#000'}">${p.score}</div>
+              </div>
+            `).join('')}
+          </div>
+
+          <div class="mt-6 text-center">
+            <button id="btn-new-game" class="brutal-btn bg-pink-400 px-8 py-4 text-xl font-bold">🎮 משחק חדש</button>
+          </div>
+        </div>
+      `;
+
+      const newBtn = $('#btn-new-game');
+      if (newBtn) {
+        newBtn.addEventListener('click', () => {
+          resetState();
+          render();
+        });
+      }
+    }
+
+    // ============================================================
+    // PLAY AGAIN / RESET
+    // ============================================================
+    function resetState() {
+      if (state.unsub) { state.unsub();
+        state.unsub = null; }
+      if (state.timerInterval) { clearInterval(state.timerInterval);
+        state.timerInterval = null; }
+      if (window._drawWatch) { clearInterval(window._drawWatch);
+        window._drawWatch = null; }
+      state.gameId = null;
+      state.gameRef = null;
+      state.gameData = null;
+      state.isHost = false;
+      state.myRoom = null;
+      state.drawing = {
+        canvas: null,
+        ctx: null,
+        isDrawing: false,
+        currentColor: COLORS[0],
+        currentWidth: WIDTHS[1],
+        strokes: [],
+        currentStroke: null,
+        canvasId: null,
+      };
+      state.revealStep = 0;
+    }
+
+    // ============================================================
+    // CONFETTI
+    // ============================================================
+    function spawnConfetti() {
+      const colors = ['#ff6b6b', '#ffd93d', '#6bcb77', '#4d96ff', '#ff9ff3', '#ff8c00', '#48dbfb'];
+      for (let i = 0; i < 60; i++) {
+        const el = document.createElement('div');
+        el.className = 'confetti-piece';
+        el.style.left = Math.random() * 100 + 'vw';
+        el.style.background = pick(colors);
+        el.style.width = (6 + Math.random() * 10) + 'px';
+        el.style.height = (6 + Math.random() * 10) + 'px';
+        el.style.border = '2px solid #000';
+        el.style.animationDuration = (2 + Math.random() * 3) + 's';
+        el.style.animationDelay = Math.random() * 2 + 's';
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 6000);
+      }
+    }
+
+    // ============================================================
+    // INIT
+    // ============================================================
+    render();
+
+    // Check URL params for room code
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('room')) {
+      const codeInput = document.getElementById('join-code');
+      if (codeInput) codeInput.value = params.get('room').toUpperCase();
+    }
+
+    console.log('🎨 כאוס גרפי loaded!');
+    console.log('Firebase project:', FIREBASE_CONFIG.projectId);
+    console.log('Set window.__firebase_config to configure Firebase');
+  </script>
+</body>
+</html>
