@@ -635,9 +635,13 @@
     }
 
     async function startGame() {
-      if (!state.isHost || !state.gameData) return;
+      if (!state.isHost || !state.gameData) {
+        console.log('startGame blocked: isHost=', state.isHost, 'gameData=', !!state.gameData);
+        return;
+      }
       const data = state.gameData;
       const players = Object.values(data.players);
+      console.log('startGame: players=', players.length);
       if (players.length < 4) {
         alert('צריך לפחות 4 שחקנים כדי להתחיל');
         return;
@@ -703,7 +707,13 @@
         votes: {},
       };
 
-      await state.gameRef.update(updateData);
+      try {
+        await state.gameRef.update(updateData);
+        console.log('startGame: update succeeded');
+      } catch (e) {
+        console.error('startGame failed:', e);
+        alert('שגיאה בהתחלת המשחק: ' + e.message + '\n\nבדוק שחוסם פרסומות לא חוסם את firestore.googleapis.com');
+      }
     }
 
     // ============================================================
