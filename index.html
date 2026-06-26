@@ -580,8 +580,9 @@
         }
         const data = doc.data();
         state.gameData = data;
+        const phaseChanged = shouldFullRender(data);
         handleGameUpdate(data);
-        if (shouldFullRender(data)) render();
+        if (phaseChanged) render();
         else if (data.phase === 'lobby') render();
         else if (data.phase === 'drawing') {
           // Canvas updates via _drawWatch, no full re-render
