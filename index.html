@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>כאוס גרפי</title>
+  <title>Mobiground</title>
   <meta name="theme-color" content="#0f0424">
   <script src="https://cdn.tailwindcss.com">
   </script>
@@ -1499,11 +1499,11 @@
       if (mode === 'alias') {
         const pool = window._aliasCustomWords || ALIAS_WORD_POOL;
         rows = [['Word', 'Taboo1', 'Taboo2', 'Taboo3', 'Taboo4'], ...pool.map(w => [w.word, ...w.taboo])];
-        filename = 'kaos_grafi_alias_words.xlsx';
+        filename = 'mobiground_alias_words.xlsx';
       } else {
         const pool = window._customWords || WORD_POOL;
         rows = [['Word', 'Category'], ...pool.map(w => [w.word, w.category])];
-        filename = 'kaos_grafi_words.xlsx';
+        filename = 'mobiground_words.xlsx';
       }
       const ws = XLSX.utils.aoa_to_sheet(rows);
       const wb = XLSX.utils.book_new();
@@ -2445,7 +2445,7 @@
         <div class="min-h-screen flex items-center justify-center p-4">
           <div class="w-full max-w-md space-y-4">
             <div class="glass-card p-6 text-center">
-              <img src="logo.png" alt="כאוס גרפי" class="mx-auto" style="width:clamp(200px, 70%, 360px);height:auto;display:block">
+              <img src="logo.png" alt="Mobiground" class="mx-auto" style="width:clamp(200px, 70%, 360px);height:auto;display:block">
             </div>
 
             <div class="glass-card p-6 space-y-4" id="join-card">
@@ -2601,7 +2601,7 @@
         container.innerHTML = `
           <div class="max-w-3xl mx-auto">
             <div class="text-center mb-6">
-              <img src="logo.png" alt="כאוס גרפי" class="mx-auto mb-2" style="width:clamp(140px, 50%, 240px);height:auto;display:block">
+              <img src="logo.png" alt="Mobiground" class="mx-auto mb-2" style="width:clamp(140px, 50%, 240px);height:auto;display:block">
             </div>
 
             <div class="flex items-center justify-between mb-4">
@@ -2656,7 +2656,7 @@
         container.innerHTML = `
           <div class="max-w-md mx-auto text-center">
             <div class="glass-card p-6 mb-4">
-              <img src="logo.png" alt="כאוס גרפי" class="mx-auto mb-1" style="width:clamp(100px, 50%, 180px);height:auto;display:block">
+              <img src="logo.png" alt="Mobiground" class="mx-auto mb-1" style="width:clamp(100px, 50%, 180px);height:auto;display:block">
               <div class="section-title mb-2">הכינוי שלך</div>
               <div class="font-black text-white" style="font-size:5.625rem">${me?.name || '...'}</div>
               ${avatarSquareHTML}
@@ -3901,7 +3901,7 @@
         <div class="max-w-2xl mx-auto reveal-overlay">
           <div class="text-center mb-8">
             <h1 class="text-5xl font-black mb-2 text-white">🏆 לוח הניקוד</h1>
-            <img src="logo.png" alt="כאוס גרפי" class="mx-auto mb-1" style="width:clamp(100px, 40%, 180px);height:auto;display:block">
+            <img src="logo.png" alt="Mobiground" class="mx-auto mb-1" style="width:clamp(100px, 40%, 180px);height:auto;display:block">
           </div>
 
           <div class="glass-card p-6">
@@ -4036,7 +4036,7 @@
       if (codeInput) codeInput.value = (params.get('room') || params.get('code')).toUpperCase();
     }
 
-    console.log('🎨 כאוס גרפי loaded!');
+    console.log('🎨 Mobiground loaded!');
     console.log('Firebase project:', FIREBASE_CONFIG.projectId);
     console.log('Set window.__firebase_config to configure Firebase');
   </script>
