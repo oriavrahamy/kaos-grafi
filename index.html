@@ -16,10 +16,32 @@
   <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js">
   </script>
   <style>
+    @font-face {
+      font-family: 'ComixNo2CLM';
+      src: url('fonts/comixno2clm_medium-webfont.ttf') format('truetype');
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'ComixNo2CLM';
+      src: url('fonts/comixno2clm_bold-webfont.ttf') format('truetype');
+      font-weight: 700;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'ComixNo2CLM';
+      src: url('fonts/comixno2clm_bold-webfont.ttf') format('truetype');
+      font-weight: 900;
+      font-style: normal;
+      font-display: swap;
+    }
+
     @import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;700;900&display=swap');
 
     * {
-      font-family: 'Google Sans', 'Inter', system-ui, -apple-system, sans-serif;
+      font-family: 'ComixNo2CLM', 'Google Sans', 'Inter', system-ui, -apple-system, sans-serif;
       box-sizing: border-box;
     }
 
@@ -820,6 +842,100 @@
       0% { opacity: 0; transform: scale(0.85) translateY(20px); }
       100% { opacity: 1; transform: scale(1) translateY(0); }
     }
+
+    .avatar-square {
+      position: relative;
+      width: 100px;
+      height: 100px;
+      border-radius: 16px;
+      background: rgba(42, 20, 82, 0.4);
+      border: 2px solid rgba(0, 229, 160, 0.2);
+      overflow: hidden;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    }
+    .avatar-square .avatar-el {
+      width: 100% !important;
+      height: 100% !important;
+    }
+    .avatar-edit-btn {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.55);
+      backdrop-filter: blur(4px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 14px;
+      z-index: 2;
+      transition: background 0.15s;
+    }
+    .avatar-edit-btn:hover {
+      background: rgba(0, 0, 0, 0.75);
+    }
+
+    .avatar-modal-options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+    }
+    .avatar-modal-option {
+      width: 56px;
+      height: 56px;
+      border-radius: 14px;
+      background: rgba(42, 20, 82, 0.4);
+      border: 2px solid rgba(0, 229, 160, 0.2);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      transition: all 0.15s ease;
+    }
+    .avatar-modal-option:hover {
+      background: rgba(59, 31, 110, 0.5);
+      transform: translateY(-2px) scale(1.05);
+    }
+    .avatar-modal-option.selected {
+      border-color: #00e5a0;
+      background: rgba(0, 229, 160, 0.15);
+      box-shadow: 0 0 20px rgba(0, 229, 160, 0.15);
+    }
+
+    .avatar-tab-bar {
+      display: flex;
+      gap: 0;
+      background: rgba(42, 20, 82, 0.4);
+      border-radius: 12px;
+      padding: 4px;
+      margin-bottom: 16px;
+    }
+    .avatar-tab-btn {
+      flex: 1;
+      padding: 8px;
+      font-weight: 700;
+      font-size: 14px;
+      border: none;
+      background: transparent;
+      color: rgba(255, 255, 255, 0.45);
+      cursor: pointer;
+      border-radius: 10px;
+      transition: all 0.15s;
+    }
+    .avatar-tab-btn.active {
+      background: rgba(0, 229, 160, 0.15);
+      color: #00e5a0;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
   </style>
 </head>
 
@@ -868,11 +984,31 @@
     </div>
   </div>
 
+  <div id="avatar-modal" class="modal-overlay">
+    <div class="modal-box" style="max-width:420px">
+      <div class="text-center mb-4">
+        <div class="avatar-square" id="am-preview" style="width:100px;height:100px;margin:0 auto"></div>
+      </div>
+
+      <div class="avatar-tab-bar">
+        <button class="avatar-tab-btn active" data-tab="veg">דמות</button>
+        <button class="avatar-tab-btn" data-tab="emo">תוסף</button>
+      </div>
+
+      <div id="am-options" class="avatar-modal-options mb-4"></div>
+
+      <button id="btn-avatar-save" class="btn-mint w-full py-3 text-lg font-bold">שמור</button>
+    </div>
+  </div>
+
   <script>
     // ============================================================
     // SOUND SYSTEM (Web Audio synth, no external files)
     // ============================================================
     let _audioCtx = null;
+    let _musicBuffer = null;
+    let _musicSource = null;
+
     function _getCtx() {
       if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       if (_audioCtx.state === 'suspended') _audioCtx.resume();
@@ -924,6 +1060,46 @@
       win() { _playTone(523, 0.12, 'sine', 0.2); setTimeout(() => _playTone(659, 0.12, 'sine', 0.2), 100); setTimeout(() => _playTone(784, 0.12, 'sine', 0.2), 200); setTimeout(() => _playTone(1047, 0.3, 'sine', 0.25), 300); },
       error() { _playTone(200, 0.15, 'square', 0.12); setTimeout(() => _playTone(180, 0.2, 'square', 0.12), 120); },
     };
+
+    function _startMusic() {
+      if (_musicSource) return;
+      if (_musicBuffer) {
+        const ctx = _getCtx();
+        _musicSource = ctx.createBufferSource();
+        _musicSource.buffer = _musicBuffer;
+        _musicSource.loop = true;
+        const g = ctx.createGain();
+        g.gain.value = 0.5;
+        _musicSource.connect(g);
+        g.connect(ctx.destination);
+        _musicSource.start();
+        return;
+      }
+      fetch('drawing_music.mp3').then(r => {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.arrayBuffer();
+      }).then(buf => {
+        const ctx = _getCtx();
+        return ctx.decodeAudioData(buf);
+      }).then(decoded => {
+        _musicBuffer = decoded;
+        _musicSource = ctx.createBufferSource();
+        _musicSource.buffer = _musicBuffer;
+        _musicSource.loop = true;
+        const g = ctx.createGain();
+        g.gain.value = 0.5;
+        _musicSource.connect(g);
+        g.connect(ctx.destination);
+        _musicSource.start();
+      }).catch(() => {});
+    }
+
+    function _stopMusic() {
+      if (_musicSource) {
+        try { _musicSource.stop(); } catch(e) {}
+        _musicSource = null;
+      }
+    }
     // ============================================================
     // FIREBASE CONFIG
     // ============================================================
@@ -1082,6 +1258,72 @@
         }
       });
     }
+
+    function _populateAvatarModal() {
+      const veg = VEGETABLES[state._modalVeg ?? 0];
+      const emo = EMOTIONS[state._modalEmo ?? 0];
+      const preview = $('#am-preview');
+      if (preview) {
+        preview.innerHTML = renderAvatar({ veg, emotion: emo }, 100);
+        updateAvatarPreviews(preview);
+      }
+      const tab = state._modalTab || 'veg';
+      const items = tab === 'veg' ? VEGETABLES : EMOTIONS;
+      const selIdx = tab === 'veg' ? (state._modalVeg ?? 0) : (state._modalEmo ?? 0);
+      const options = $('#am-options');
+      if (options) {
+        options.innerHTML = items.map((item, i) =>
+          `<button class="avatar-modal-option ${i === selIdx ? 'selected' : ''}" data-idx="${i}">${item}</button>`
+        ).join('');
+      }
+      $$('.avatar-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+    }
+
+    // One-time avatar modal event listeners
+    document.addEventListener('click', e => {
+      const tabBtn = e.target.closest('.avatar-tab-btn');
+      if (tabBtn) {
+        state._modalTab = tabBtn.dataset.tab;
+        _populateAvatarModal();
+        return;
+      }
+      const optBtn = e.target.closest('.avatar-modal-option');
+      if (optBtn && document.getElementById('avatar-modal')?.classList.contains('open')) {
+        const idx = parseInt(optBtn.dataset.idx);
+        const tab = state._modalTab || 'veg';
+        if (tab === 'veg') state._modalVeg = idx;
+        else state._modalEmo = idx;
+        _populateAvatarModal();
+        SOUND.click();
+        return;
+      }
+    });
+
+    document.getElementById('btn-avatar-save')?.addEventListener('click', () => {
+      const veg = VEGETABLES[state._modalVeg ?? 0];
+      const emo = EMOTIONS[state._modalEmo ?? 0];
+      const uid = state.user?.uid;
+      if (!uid || !state.gameRef) return;
+      state.gameRef.update({
+        ['players.' + uid + '.veg']: veg,
+        ['players.' + uid + '.emotion']: emo,
+      }).then(() => {
+        SOUND.sparkle();
+        const sq = document.getElementById('lobby-avatar-square');
+        if (sq) {
+          sq.innerHTML = renderAvatar({ veg, emotion: emo }, 100) + '<button class="avatar-edit-btn" id="btn-open-avatar">✏️</button>';
+          updateAvatarPreviews(sq);
+        }
+        document.getElementById('avatar-modal')?.classList.remove('open');
+        toast('דמות עודכנה!');
+      }).catch(() => {});
+    });
+
+    document.getElementById('avatar-modal')?.addEventListener('click', e => {
+      if (e.target === e.currentTarget) {
+        document.getElementById('avatar-modal')?.classList.remove('open');
+      }
+    });
 
     function toast(msg, isError) {
       const el = document.createElement('div');
@@ -1270,6 +1512,11 @@
         if (state.timerInterval) { clearInterval(state.timerInterval); state.timerInterval = null; }
         if (window._drawWatch) { clearInterval(window._drawWatch); window._drawWatch = null; }
         lastPhase = data.phase;
+        if (data.phase === 'drawing') {
+          _startMusic();
+        } else {
+          _stopMusic();
+        }
       }
     }
 
@@ -1736,8 +1983,7 @@
         <div class="min-h-screen flex items-center justify-center p-4">
           <div class="w-full max-w-md space-y-4">
             <div class="glass-card p-6 text-center">
-              <h1 class="text-5xl font-black mb-1 text-white">כאוס גרפי</h1>
-              <p class="text-lg font-bold" style="color:#00e5a0">משחק הציור ההמוני</p>
+              <img src="logo.png" alt="כאוס גרפי" class="mx-auto" style="width:clamp(200px, 70%, 360px);height:auto;display:block">
             </div>
 
             <div class="glass-card p-6 space-y-4" id="join-card">
@@ -1801,12 +2047,16 @@
             const data = doc.data();
             if (data.phase !== 'lobby') { showError('המשחק כבר התחיל'); verifyBtn.disabled = false; verifyBtn.classList.remove('btn-loading'); return; }
             state._verifiedCode = code;
+            state._joinVeg = VEGETABLES[Math.floor(Math.random() * VEGETABLES.length)];
+            state._joinEmo = EMOTIONS[Math.floor(Math.random() * EMOTIONS.length)];
             state._joinFlow = 'verify';
             render();
           } catch (e) { showError(e.message); verifyBtn.disabled = false; verifyBtn.classList.remove('btn-loading'); }
         });
 
         $('#btn-show-create').addEventListener('click', () => {
+          state._joinVeg = VEGETABLES[Math.floor(Math.random() * VEGETABLES.length)];
+          state._joinEmo = EMOTIONS[Math.floor(Math.random() * EMOTIONS.length)];
           state._joinFlow = 'create';
           render();
         });
@@ -1823,7 +2073,7 @@
           const btn = $('#btn-enter');
           btn.disabled = true; btn.classList.add('btn-loading');
           try {
-            await joinGame(state._verifiedCode, name, '🥕', '😊');
+            await joinGame(state._verifiedCode, name, state._joinVeg, state._joinEmo);
             state.playerName = name;
           } catch (e) { showError(e.message); btn.disabled = false; btn.classList.remove('btn-loading'); }
         });
@@ -1849,7 +2099,7 @@
           const btn = $('#btn-create-submit');
           btn.disabled = true; btn.classList.add('btn-loading');
           try {
-            await createGame(name, '🥕', '😊');
+            await createGame(name, state._joinVeg, state._joinEmo);
             state.playerName = name;
           } catch (e) { showError(e.message); btn.disabled = false; btn.classList.remove('btn-loading'); }
         });
@@ -1878,41 +2128,10 @@
       const players = Object.values(data.players || {});
       const isHost = state.isHost;
       const me = data.players?.[state.user?.uid];
-      const myVegIdx = VEGETABLES.indexOf(me?.veg || '🥕');
-      const myEmoIdx = EMOTIONS.indexOf(me?.emotion || '😊');
-      const selVegIdx = myVegIdx >= 0 ? myVegIdx : 0;
-      const selEmoIdx = myEmoIdx >= 0 ? myEmoIdx : 0;
-      const avatarOpen = state._avatarOpen;
 
-      const avatarBuilderHTML = `
-        <div class="glass-card p-4 mb-4">
-          <button id="btn-toggle-avatar" class="w-full flex items-center justify-between" style="cursor:pointer;background:none;border:none;color:inherit;padding:0">
-            <span class="font-bold text-white">🍳 מטבח האמוג'י — בנה את הדמות שלך</span>
-            <span id="avatar-arrow" style="transition:transform 0.2s;${avatarOpen ? 'transform:rotate(180deg)' : ''}">▼</span>
-          </button>
-          <div id="avatar-builder" class="mt-4" style="display:${avatarOpen ? '' : 'none'}">
-            <div class="flex items-center gap-4 mb-3">
-              <div class="avatar-preview" id="lobby-preview" style="position:relative;font-size:0;overflow:hidden;border-radius:12px">
-                <img id="lobby-preview-img" src="${ekUrl(VEGETABLES[selVegIdx], EMOTIONS[selEmoIdx])}" onerror="this.style.display='none'" onload="this.style.opacity='1';var s=this.parentElement.querySelector('.af');if(s)s.style.opacity='0'" style="width:100%;height:100%;object-fit:contain;position:absolute;top:0;left:0;opacity:0;transition:opacity 0.3s">
-                <span class="af" style="font-size:40px;line-height:80px;transition:opacity 0.3s">${VEGETABLES[selVegIdx]}${EMOTIONS[selEmoIdx]}</span>
-              </div>
-              <div class="flex-1 text-sm hint-text">
-                בחר ירק + רגש, כולם יראו את הדמות החדשה שלך!
-              </div>
-            </div>
-            <div class="section-title mb-1" style="font-size:11px">ירק</div>
-            <div class="flex flex-wrap gap-1 mb-2" id="lobby-veg-selector">
-              ${VEGETABLES.map((v, i) => `
-                <button class="avatar-option ${i === selVegIdx ? 'selected' : ''}" data-idx="${i}">${v}</button>
-              `).join('')}
-            </div>
-            <div class="section-title mb-1" style="font-size:11px">רגש</div>
-            <div class="flex flex-wrap gap-1 mb-2" id="lobby-emo-selector">
-              ${EMOTIONS.map((e, i) => `
-                <button class="avatar-option ${i === selEmoIdx ? 'selected' : ''}" data-idx="${i}">${e}</button>
-              `).join('')}
-            </div>
-          </div>
+      const avatarSquareHTML = `
+        <div class="avatar-square" id="lobby-avatar-square">
+          <button class="avatar-edit-btn" id="btn-open-avatar">✏️</button>
         </div>
       `;
 
@@ -1921,7 +2140,7 @@
         container.innerHTML = `
           <div class="max-w-3xl mx-auto">
             <div class="text-center mb-6">
-              <h1 class="text-4xl font-black mb-2 text-white">${gm ? gm.icon + ' ' + (data.gameName || gm.name) : '🎨 ' + (data.gameName || 'המתחזה')}</h1>
+              <img src="logo.png" alt="כאוס גרפי" class="mx-auto mb-2" style="width:clamp(140px, 50%, 240px);height:auto;display:block">
               <div class="glass-card-flat inline-block px-6 py-2">
                 <span class="font-bold">קוד חדר:</span>
                 <span class="text-2xl font-black tracking-widest ml-2" style="color:#00e5a0">${state.gameId}</span>
@@ -1951,12 +2170,13 @@
               ${players.length < 3 ? `<p class="mt-2 text-sm hint-text">נדרשים לפחות 3 שחקנים כדי להתחיל</p>` : ''}
             </div>
 
-            ${avatarBuilderHTML}
+            ${avatarSquareHTML}
 
             <div class="glass-card-flat p-4 text-center">
               <p class="font-bold" style="color:#00e5a0">📱 שתף את קוד החדר עם החברים!</p>
               <p class="text-sm hint-text">כולם צריכים להזין את הקוד במכשיר שלהם</p>
             </div>
+            <div class="text-center mt-8 text-xs" style="color:#6b5b8a">נוצר על ידי אורי אברהם ישרזדה</div>
           </div>
         `;
       } else {
@@ -1964,33 +2184,10 @@
         container.innerHTML = `
           <div class="max-w-md mx-auto text-center">
             <div class="glass-card p-6 mb-4">
-              <h2 class="text-lg font-bold mb-2" style="color:#00e5a0">${gm ? gm.icon + ' ' + (data.gameName || gm.name) : '🎨 ' + (data.gameName || 'המתחזה')}</h2>
+              <img src="logo.png" alt="כאוס גרפי" class="mx-auto mb-1" style="width:clamp(100px, 50%, 180px);height:auto;display:block">
               <div class="section-title mb-2">הכינוי שלך</div>
-              <div class="text-3xl font-black text-white mb-1">${me?.name || '...'}</div>
-            </div>
-
-            <div class="glass-card p-4 mb-4">
-              <div class="flex items-center gap-4 justify-center mb-3">
-                <div class="avatar-preview" id="lobby-preview" style="position:relative;font-size:0;overflow:hidden;border-radius:16px;width:100px;height:100px">
-                  <img id="lobby-preview-img" src="${ekUrl(VEGETABLES[selVegIdx], EMOTIONS[selEmoIdx])}" onerror="this.style.display='none'" onload="this.style.opacity='1';var s=this.parentElement.querySelector('.af');if(s)s.style.opacity='0'" style="width:100%;height:100%;object-fit:contain;position:absolute;top:0;left:0;opacity:0;transition:opacity 0.3s">
-                  <span class="af" style="font-size:50px;line-height:100px;transition:opacity 0.3s">${VEGETABLES[selVegIdx]}${EMOTIONS[selEmoIdx]}</span>
-                </div>
-              </div>
-              <button id="btn-toggle-avatar" class="w-full py-2 btn-purple text-sm font-bold">🍳 עיצוב דמות</button>
-              <div id="avatar-builder" class="mt-4" style="display:${avatarOpen ? '' : 'none'};text-align:initial">
-                <div class="section-title mb-1" style="font-size:11px">ירק</div>
-                <div class="flex flex-wrap gap-1 mb-2" id="lobby-veg-selector">
-                  ${VEGETABLES.map((v, i) => `
-                    <button class="avatar-option ${i === selVegIdx ? 'selected' : ''}" data-idx="${i}">${v}</button>
-                  `).join('')}
-                </div>
-                <div class="section-title mb-1" style="font-size:11px">רגש</div>
-                <div class="flex flex-wrap gap-1 mb-2" id="lobby-emo-selector">
-                  ${EMOTIONS.map((e, i) => `
-                    <button class="avatar-option ${i === selEmoIdx ? 'selected' : ''}" data-idx="${i}">${e}</button>
-                  `).join('')}
-                </div>
-              </div>
+              <div class="text-3xl font-black text-white mb-3">${me?.name || '...'}</div>
+              ${avatarSquareHTML}
             </div>
 
             <div class="glass-card-flat p-4">
@@ -1998,88 +2195,31 @@
               <div class="mt-2 text-xs hint-text">${players.length} שחקנים מחוברים</div>
             </div>
           </div>
+          <div class="text-center mt-8 text-xs" style="color:#6b5b8a">נוצר על ידי אורי אברהם ישרזדה</div>
         `;
       }
 
       updateAvatarPreviews(container);
 
-      function sparkleBurst(el) {
-        const rect = el.getBoundingClientRect();
-        const cx = rect.left + rect.width / 2;
-        const cy = rect.top + rect.height / 2;
-        for (let i = 0; i < 12; i++) {
-          const s = document.createElement('div');
-          s.className = 'sparkle';
-          const angle = (i / 12) * Math.PI * 2;
-          const dist = 40 + Math.random() * 30;
-          s.style.setProperty('--tx', Math.cos(angle) * dist + 'px');
-          s.style.setProperty('--ty', Math.sin(angle) * dist + 'px');
-          s.style.left = cx + 'px';
-          s.style.top = cy + 'px';
-          s.style.position = 'fixed';
-          s.style.zIndex = '9999';
-          s.style.background = ['#00e5a0', '#ff6b6b', '#8b5cf6', '#ffd700'][Math.floor(Math.random() * 4)];
-          document.body.appendChild(s);
-          setTimeout(() => s.remove(), 600);
-        }
+      const sq = $('#lobby-avatar-square');
+      if (sq && me) {
+        const h = sq.innerHTML;
+        sq.innerHTML = renderAvatar(me, 100) + '<button class="avatar-edit-btn" id="btn-open-avatar">✏️</button>';
+        updateAvatarPreviews(sq);
       }
 
-      function updateLobbyAvatar() {
-        const veg = VEGETABLES[state._lobbyVeg ?? 0];
-        const emo = EMOTIONS[state._lobbyEmo ?? 0];
-        const img = $('#lobby-preview-img');
-        const fallback = $('#lobby-preview .af');
-        if (img) {
-          img.style.display = '';
-          img.style.opacity = '0';
-          img.src = ekUrl(veg, emo);
-        }
-        if (fallback) {
-          fallback.style.opacity = '1';
-          fallback.textContent = veg + emo;
-        }
-        sparkleBurst($('#lobby-preview'));
-        state.gameRef.update({
-          ['players.' + state.user.uid + '.veg']: veg,
-          ['players.' + state.user.uid + '.emotion']: emo,
+      // Avatar modal open
+      const openBtn = $('#btn-open-avatar');
+      if (openBtn) {
+        openBtn.addEventListener('click', () => {
+          if (!me) return;
+          state._modalVeg = VEGETABLES.indexOf(me.veg || '🥕');
+          state._modalEmo = EMOTIONS.indexOf(me.emotion || '😊');
+          state._modalTab = 'veg';
+          _populateAvatarModal();
+          $('#avatar-modal').classList.add('open');
         });
       }
-
-      $('#btn-toggle-avatar').addEventListener('click', () => {
-        const b = $('#avatar-builder');
-        const arrow = $('#avatar-arrow');
-        state._avatarOpen = b.style.display === 'none';
-        if (state._avatarOpen) {
-          b.style.display = '';
-          if (arrow) arrow.style.transform = 'rotate(180deg)';
-        } else {
-          b.style.display = 'none';
-          if (arrow) arrow.style.transform = '';
-        }
-      });
-
-      state._lobbyVeg = selVegIdx;
-      state._lobbyEmo = selEmoIdx;
-
-      $$('#lobby-veg-selector .avatar-option').forEach(btn => {
-        btn.addEventListener('click', () => {
-          state._lobbyVeg = parseInt(btn.dataset.idx);
-          $$('#lobby-veg-selector .avatar-option').forEach(b => b.classList.remove('selected'));
-          btn.classList.add('selected');
-          SOUND.sparkle();
-          updateLobbyAvatar();
-        });
-      });
-
-      $$('#lobby-emo-selector .avatar-option').forEach(btn => {
-        btn.addEventListener('click', () => {
-          state._lobbyEmo = parseInt(btn.dataset.idx);
-          $$('#lobby-emo-selector .avatar-option').forEach(b => b.classList.remove('selected'));
-          btn.classList.add('selected');
-          SOUND.sparkle();
-          updateLobbyAvatar();
-        });
-      });
 
       if (isHost) {
         $('#btn-start').addEventListener('click', () => {
@@ -2622,7 +2762,7 @@
         <div class="max-w-2xl mx-auto reveal-overlay">
           <div class="text-center mb-8">
             <h1 class="text-5xl font-black mb-2 text-white">🏆 לוח הניקוד</h1>
-            <p class="text-lg font-bold" style="color:#00e5a0">${(() => { const gm = GAME_MODES.find(m => m.id === gameMode); return gm ? gm.icon + ' ' + (data.gameName || gm.name) : '🎨 ' + (data.gameName || 'המתחזה'); })()} - תוצאות סופיות</p>
+            <img src="logo.png" alt="כאוס גרפי" class="mx-auto mb-1" style="width:clamp(100px, 40%, 180px);height:auto;display:block">
           </div>
 
           <div class="glass-card p-6">
