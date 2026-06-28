@@ -778,6 +778,48 @@
         font-size: 22px;
       }
     }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 99998;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(10, 2, 24, 0.7);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      animation: modalFadeIn 0.2s ease-out;
+    }
+
+    .modal-overlay.open {
+      display: flex;
+    }
+
+    .modal-box {
+      width: 90%;
+      max-width: 480px;
+      max-height: 90vh;
+      overflow-y: auto;
+      border-radius: 20px;
+      background: rgba(20, 8, 48, 0.95);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(0, 229, 160, 0.2);
+      box-shadow: 0 40px 80px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(0, 229, 160, 0.05) inset;
+      padding: 28px;
+      animation: modalSlideIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    @keyframes modalFadeIn {
+      0% { opacity: 0; }
+      100% { opacity: 1; }
+    }
+
+    @keyframes modalSlideIn {
+      0% { opacity: 0; transform: scale(0.85) translateY(20px); }
+      100% { opacity: 1; transform: scale(1) translateY(0); }
+    }
   </style>
 </head>
 
@@ -788,6 +830,42 @@
     <div class="phone-icon"></div>
     <div style="font-size:20px">סובב את הטלפון שלך</div>
     <div style="font-size:14px;color:rgba(255,255,255,0.4)">משחק עובד במצב עמיד</div>
+  </div>
+
+  <div id="config-modal" class="modal-overlay">
+    <div class="modal-box">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-black text-white">⚙️ הגדרות משחק</h2>
+        <button id="btn-modal-close" style="background:none;border:none;color:rgba(255,255,255,0.4);font-size:24px;cursor:pointer">✕</button>
+      </div>
+
+      <div class="mb-3">
+        <label class="section-title block mb-1">שם המשחק</label>
+        <input id="cfg-name" class="inp w-full p-3 text-lg font-bold" maxlength="20">
+      </div>
+
+      <div class="mb-3">
+        <label class="section-title block mb-1">כמות סבבים</label>
+        <div class="flex gap-2 flex-wrap" id="cfg-rounds-container"></div>
+      </div>
+
+      <div class="mb-4">
+        <label class="section-title block mb-1">מצב משחק</label>
+        <div class="flex flex-col gap-2" id="cfg-modes-container"></div>
+      </div>
+
+      <div class="mb-4 pt-3" style="border-top:1px solid rgba(0,229,160,0.1)">
+        <label class="section-title block mb-2">📚 רשימת מילים</label>
+        <div class="flex gap-2 mb-2">
+          <button id="cfg-export-words" class="btn-purple px-3 py-2 text-sm font-bold flex-1">📥 ייצוא קובץ</button>
+          <button id="cfg-import-words" class="btn-purple px-3 py-2 text-sm font-bold flex-1">📤 יבוא קובץ</button>
+        </div>
+        <input id="cfg-file-input" type="file" accept=".xlsx,.xls" style="display:none">
+        <div id="cfg-custom-words-status" style="display:none" class="text-xs font-bold px-3 py-2" style="background:rgba(0,229,160,0.1);border-radius:8px;text-align:center">✅ מילים מותאמות אישית</div>
+      </div>
+
+      <button id="btn-modal-save" class="btn-mint w-full py-3 text-lg font-bold">שמור הגדרות</button>
+    </div>
   </div>
 
   <script>
@@ -1799,7 +1877,6 @@
     function renderLobby(container, data) {
       const players = Object.values(data.players || {});
       const isHost = state.isHost;
-      const hasCustomWords = !!window._customWords;
       const me = data.players?.[state.user?.uid];
       const myVegIdx = VEGETABLES.indexOf(me?.veg || '🥕');
       const myEmoIdx = EMOTIONS.indexOf(me?.emotion || '😊');
@@ -1854,38 +1931,13 @@
             <div class="glass-card p-6 mb-4">
               <div class="flex justify-between items-center mb-4">
                 <h2 class="text-xl font-black text-white">שחקנים (${players.length})</h2>
-                <button id="btn-start" class="btn-mint px-6 py-2 text-lg font-bold" ${players.length < 3 ? 'disabled' : ''}>התחל משחק!</button>
+                <div class="flex gap-2">
+                  <button id="btn-open-config" class="btn-purple px-3 py-2 text-sm font-bold">⚙️ הגדרות</button>
+                  <button id="btn-start" class="btn-mint px-6 py-2 text-lg font-bold" ${players.length < 3 ? 'disabled' : ''}>התחל משחק!</button>
+                </div>
               </div>
 
-              <div id="game-config" class="glass-card-flat p-4 mb-4">
-                <div class="section-title mb-2">⚙️ הגדרות משחק</div>
-                <div class="mb-3">
-                  <label class="block text-sm font-bold mb-1 text-white">שם המשחק</label>
-                  <input id="cfg-name" class="inp w-full p-2 text-lg font-bold" value="${data.gameName || 'המתחזה'}" maxlength="20">
-                </div>
-                <div class="mb-3">
-                  <label class="block text-sm font-bold mb-1 text-white">כמות סבבים</label>
-                  <div class="flex gap-2 flex-wrap">
-                    ${[1,2,3,4,5].map(n => `
-                      <button class="cfg-rounds-btn px-4 py-2 font-bold" style="border-radius:10px;border:2px solid ${(data.maxRounds || DEFAULT_MAX_ROUNDS) === n ? '#00e5a0' : 'rgba(0,229,160,0.2)'};background:${(data.maxRounds || DEFAULT_MAX_ROUNDS) === n ? 'rgba(0,229,160,0.15)' : 'rgba(42,20,82,0.4)'};color:${(data.maxRounds || DEFAULT_MAX_ROUNDS) === n ? '#00e5a0' : '#f0eaff'};cursor:pointer">${n}</button>
-                    `).join('')}
-                  </div>
-                </div>
-                <div>
-                  <label class="block text-sm font-bold mb-1 text-white">מצב משחק</label>
-                  <div class="flex flex-col gap-2">
-                    ${GAME_MODES.map(m => `
-                      <button class="cfg-mode-btn flex items-center gap-3 p-3 font-bold" data-mode="${m.id}" style="border-radius:12px;border:2px solid ${(data.gameMode || DEFAULT_GAME_MODE) === m.id ? '#00e5a0' : 'rgba(0,229,160,0.2)'};background:${(data.gameMode || DEFAULT_GAME_MODE) === m.id ? 'rgba(0,229,160,0.15)' : 'rgba(42,20,82,0.4)'};color:#f0eaff;cursor:pointer;text-align:initial">
-                        <span style="font-size:24px">${m.icon}</span>
-                        <div>
-                          <div class="font-bold">${m.name}</div>
-                          <div class="text-xs hint-text">${m.desc}</div>
-                        </div>
-                      </button>
-                    `).join('')}
-                  </div>
-                </div>
-              </div>
+
 
               <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 stagger-in">
                 ${players.map(p => `
@@ -1895,12 +1947,6 @@
                     ${p.id === data.hostId ? '<span class="host-badge mr-auto">מארח</span>' : ''}
                   </div>
                 `).join('')}
-              </div>
-              <div class="mt-3 flex gap-2 flex-wrap">
-                <button id="btn-export-words" class="btn-purple px-3 py-1 text-sm font-bold">📥 ייצוא מילים</button>
-                <button id="btn-import-words" class="btn-purple px-3 py-1 text-sm font-bold">📤 יבוא מילים</button>
-                <input id="file-input" type="file" accept=".xlsx,.xls" style="display:none">
-                ${hasCustomWords ? `<span class="text-xs font-bold px-2 py-1" style="background:#00e5a0;color:#000">✅ מילים מותאמות</span>` : ''}
               </div>
               ${players.length < 3 ? `<p class="mt-2 text-sm hint-text">נדרשים לפחות 3 שחקנים כדי להתחיל</p>` : ''}
             </div>
@@ -2044,29 +2090,104 @@
           SOUND.start();
           startGame();
         });
-        $('#btn-export-words').addEventListener('click', exportWordTemplate);
-        $('#btn-import-words').addEventListener('click', () => { $('#file-input').click(); });
-        $('#file-input').addEventListener('change', e => {
-          if (e.target.files[0]) { importWordList(e.target.files[0]); e.target.value = ''; }
+
+        // Modal open/close
+        $('#btn-open-config').addEventListener('click', () => {
+          const modal = $('#config-modal');
+          const data = state.gameData;
+          if (!data) return;
+
+          // Populate fields
+          $('#cfg-name').value = data.gameName || 'המתחזה';
+
+          // Round buttons
+          const roundsContainer = $('#cfg-rounds-container');
+          roundsContainer.innerHTML = '';
+          [1,2,3,4,5].forEach(n => {
+            const btn = document.createElement('button');
+            btn.textContent = n;
+            btn.className = 'cfg-rounds-btn px-4 py-2 font-bold';
+            const isActive = (data.maxRounds || 3) === n;
+            btn.style.cssText = `border-radius:10px;border:2px solid ${isActive ? '#00e5a0' : 'rgba(0,229,160,0.2)'};background:${isActive ? 'rgba(0,229,160,0.15)' : 'rgba(42,20,82,0.4)'};color:${isActive ? '#00e5a0' : '#f0eaff'};cursor:pointer`;
+            btn.addEventListener('click', () => {
+              $$('#cfg-rounds-container .cfg-rounds-btn').forEach(b => {
+                b.style.borderColor = 'rgba(0,229,160,0.2)';
+                b.style.background = 'rgba(42,20,82,0.4)';
+                b.style.color = '#f0eaff';
+              });
+              btn.style.borderColor = '#00e5a0';
+              btn.style.background = 'rgba(0,229,160,0.15)';
+              btn.style.color = '#00e5a0';
+              state._cfgRounds = n;
+            });
+            roundsContainer.appendChild(btn);
+          });
+
+          // Mode buttons
+          const modesContainer = $('#cfg-modes-container');
+          modesContainer.innerHTML = '';
+          GAME_MODES.forEach(m => {
+            const btn = document.createElement('button');
+            btn.dataset.mode = m.id;
+            const isActive = (data.gameMode || 'impostor') === m.id;
+            btn.style.cssText = `border-radius:12px;border:2px solid ${isActive ? '#00e5a0' : 'rgba(0,229,160,0.2)'};background:${isActive ? 'rgba(0,229,160,0.15)' : 'rgba(42,20,82,0.4)'};color:#f0eaff;cursor:pointer;text-align:initial;padding:12px;display:flex;align-items:center;gap:12px;font-weight:700`;
+            btn.innerHTML = `<span style="font-size:24px">${m.icon}</span><div><div class="font-bold">${m.name}</div><div class="text-xs hint-text">${m.desc}</div></div>`;
+            btn.addEventListener('click', () => {
+              $$('#cfg-modes-container button').forEach(b => {
+                b.style.borderColor = 'rgba(0,229,160,0.2)';
+                b.style.background = 'rgba(42,20,82,0.4)';
+              });
+              btn.style.borderColor = '#00e5a0';
+              btn.style.background = 'rgba(0,229,160,0.15)';
+              state._cfgMode = m.id;
+            });
+            modesContainer.appendChild(btn);
+          });
+
+          // Custom words status
+          const statusEl = $('#cfg-custom-words-status');
+          if (window._customWords) {
+            statusEl.textContent = '✅ מילים מותאמות אישית (' + window._customWords.length + ')';
+            statusEl.style.display = 'block';
+          } else {
+            statusEl.style.display = 'none';
+          }
+
+          state._cfgRounds = data.maxRounds || 3;
+          state._cfgMode = data.gameMode || 'impostor';
+
+          modal.classList.add('open');
         });
 
-        const nameInput = $('#cfg-name');
-        if (nameInput) {
-          nameInput.addEventListener('input', () => {
-            state.gameRef.update({ gameName: nameInput.value || 'המתחזה' });
-          });
-        }
-        $$('.cfg-rounds-btn').forEach(btn => {
-          btn.addEventListener('click', () => {
-            const n = parseInt(btn.textContent);
-            state.gameRef.update({ maxRounds: n });
-          });
+        $('#btn-modal-close').addEventListener('click', () => {
+          $('#config-modal').classList.remove('open');
         });
-        $$('.cfg-mode-btn').forEach(btn => {
-          btn.addEventListener('click', () => {
-            const mode = btn.dataset.mode;
-            state.gameRef.update({ gameMode: mode });
+
+        $('#config-modal').addEventListener('click', e => {
+          if (e.target === e.currentTarget) $('#config-modal').classList.remove('open');
+        });
+
+        // Save button
+        $('#btn-modal-save').addEventListener('click', () => {
+          const name = $('#cfg-name').value.trim() || 'המתחזה';
+          state.gameRef.update({
+            gameName: name,
+            maxRounds: state._cfgRounds || 3,
+            gameMode: state._cfgMode || 'impostor',
           });
+          SOUND.click();
+          toast('הגדרות נשמרו!');
+          $('#config-modal').classList.remove('open');
+        });
+
+        // Word import/export in modal
+        $('#cfg-export-words').addEventListener('click', exportWordTemplate);
+        $('#cfg-import-words').addEventListener('click', () => { $('#cfg-file-input').click(); });
+        $('#cfg-file-input').addEventListener('change', e => {
+          if (e.target.files[0]) {
+            importWordList(e.target.files[0]);
+            e.target.value = '';
+          }
         });
       }
     }
