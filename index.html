@@ -1072,14 +1072,14 @@
         <div class="flex flex-col gap-2" id="cfg-modes-container"></div>
       </div>
 
-      <div class="mb-4 pt-3" style="border-top:1px solid rgba(0,229,160,0.1)">
-        <label class="section-title block mb-2">📚 רשימת מילים</label>
+      <div class="mb-4 pt-3" style="border-top:1px solid rgba(0,229,160,0.1)" id="cfg-words-section">
+        <label class="section-title block mb-2" id="cfg-words-label">📚 רשימת מילים</label>
         <div class="flex gap-2 mb-2">
           <button id="cfg-export-words" class="btn-purple px-3 py-2 text-sm font-bold flex-1">📥 ייצוא קובץ</button>
           <button id="cfg-import-words" class="btn-purple px-3 py-2 text-sm font-bold flex-1">📤 יבוא קובץ</button>
         </div>
         <input id="cfg-file-input" type="file" accept=".xlsx,.xls" style="display:none">
-        <div id="cfg-custom-words-status" style="display:none" class="text-xs font-bold px-3 py-2" style="background:rgba(0,229,160,0.1);border-radius:8px;text-align:center">✅ מילים מותאמות אישית</div>
+        <div id="cfg-custom-words-status" style="display:none" class="text-xs font-bold px-3 py-2" style="background:rgba(0,229,160,0.1);border-radius:8px;text-align:center"></div>
       </div>
 
       <button id="btn-modal-save" class="btn-mint w-full py-3 text-lg font-bold">שמור הגדרות</button>
@@ -1488,17 +1488,33 @@
       setTimeout(() => el.remove(), 3000);
     }
 
+    function _wordMode() {
+      return (state._cfgMode || 'impostor') === 'alias' ? 'alias' : 'impostor';
+    }
+
     function exportWordTemplate() {
       if (typeof XLSX === 'undefined') { toast('ספריית Excel לא נטענה', true); return; }
-      const ws = XLSX.utils.aoa_to_sheet([['Word', 'Category'], ...WORD_POOL.map(w => [w.word, w.category])]);
+      const mode = _wordMode();
+      let rows, filename;
+      if (mode === 'alias') {
+        const pool = window._aliasCustomWords || ALIAS_WORD_POOL;
+        rows = [['Word', 'Taboo1', 'Taboo2', 'Taboo3', 'Taboo4'], ...pool.map(w => [w.word, ...w.taboo])];
+        filename = 'kaos_grafi_alias_words.xlsx';
+      } else {
+        const pool = window._customWords || WORD_POOL;
+        rows = [['Word', 'Category'], ...pool.map(w => [w.word, w.category])];
+        filename = 'kaos_grafi_words.xlsx';
+      }
+      const ws = XLSX.utils.aoa_to_sheet(rows);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Words');
-      XLSX.writeFile(wb, 'kaos_grafi_words.xlsx');
+      XLSX.writeFile(wb, filename);
       toast('קובץ הורד! ערוך אותו והעלה בחזרה');
     }
 
     function importWordList(file) {
       if (typeof XLSX === 'undefined') { toast('ספריית Excel לא נטענה', true); return; }
+      const mode = _wordMode();
       const reader = new FileReader();
       reader.onload = e => {
         try {
@@ -1506,18 +1522,65 @@
           const ws = wb.Sheets[wb.SheetNames[0]];
           const data = XLSX.utils.sheet_to_json(ws);
           if (!data || data.length < 2) { toast('צריך לפחות 2 מילים', true); return; }
-          const imported = data.map(row => ({
-            word: String(row.Word || row.word || '').trim(),
-            category: String(row.Category || row.category || '').trim() || 'כללי',
-          })).filter(w => w.word);
-          if (imported.length < 2) { toast('צריך לפחות 2 מילים', true); return; }
-          window._customWords = imported;
+          let imported;
+          if (mode === 'alias') {
+            imported = data.map(row => ({
+              word: String(row.Word || row.word || '').trim(),
+              taboo: [
+                String(row.Taboo1 || row.taboo1 || '').trim(),
+                String(row.Taboo2 || row.taboo2 || '').trim(),
+                String(row.Taboo3 || row.taboo3 || '').trim(),
+                String(row.Taboo4 || row.taboo4 || '').trim(),
+              ].filter(Boolean),
+            })).filter(w => w.word && w.taboo.length >= 2);
+            if (imported.length < 2) { toast('צריך לפחות 2 מילים עם לפחות 2 מילים אסורות', true); return; }
+            window._aliasCustomWords = imported;
+          } else {
+            imported = data.map(row => ({
+              word: String(row.Word || row.word || '').trim(),
+              category: String(row.Category || row.category || '').trim() || 'כללי',
+            })).filter(w => w.word);
+            if (imported.length < 2) { toast('צריך לפחות 2 מילים', true); return; }
+            window._customWords = imported;
+          }
           toast('יובאו ' + imported.length + ' מילים!');
+          _updateWordsStatus();
         } catch (err) {
           toast('שגיאה בקריאת הקובץ: ' + err.message, true);
         }
       };
       reader.readAsArrayBuffer(file);
+    }
+
+    function _updateWordsSection() {
+      const section = $('#cfg-words-section');
+      const label = $('#cfg-words-label');
+      const mode = _wordMode();
+      const show = mode === 'impostor' || mode === 'alias';
+      section.style.display = show ? '' : 'none';
+      if (show) {
+        label.textContent = mode === 'alias' ? '📚 רשימת מילים לאליאס (Word + 4 Taboo)' : '📚 רשימת מילים למתחזה (Word + Category)';
+      }
+    }
+
+    function _updateWordsStatus() {
+      const statusEl = $('#cfg-custom-words-status');
+      const mode = _wordMode();
+      if (mode === 'alias') {
+        if (window._aliasCustomWords) {
+          statusEl.textContent = '✅ מילים מותאמות לאליאס (' + window._aliasCustomWords.length + ')';
+          statusEl.style.display = 'block';
+        } else {
+          statusEl.style.display = 'none';
+        }
+      } else {
+        if (window._customWords) {
+          statusEl.textContent = '✅ מילים מותאמות למתחזה (' + window._customWords.length + ')';
+          statusEl.style.display = 'block';
+        } else {
+          statusEl.style.display = 'none';
+        }
+      }
     }
 
     // ============================================================
@@ -2736,6 +2799,8 @@
               const roundsDiv = $('#cfg-rounds-container').parentElement;
               if (roundsDiv) roundsDiv.style.display = isAlias ? 'none' : '';
               $('#cfg-alias-score-container').style.display = isAlias ? '' : 'none';
+              _updateWordsSection();
+              _updateWordsStatus();
             });
             modesContainer.appendChild(btn);
           });
@@ -2746,18 +2811,12 @@
           if (roundsDiv) roundsDiv.style.display = curMode === 'alias' ? 'none' : '';
           $('#cfg-alias-score-container').style.display = curMode === 'alias' ? '' : 'none';
 
-          // Custom words status
-          const statusEl = $('#cfg-custom-words-status');
-          if (window._customWords) {
-            statusEl.textContent = '✅ מילים מותאמות אישית (' + window._customWords.length + ')';
-            statusEl.style.display = 'block';
-          } else {
-            statusEl.style.display = 'none';
-          }
-
           state._cfgRounds = data.maxRounds || 3;
           state._cfgMode = data.gameMode || 'impostor';
           state._cfgAliasTarget = data.aliasTargetScore || ALIAS_TARGET_SCORE;
+
+          _updateWordsSection();
+          _updateWordsStatus();
 
           modal.classList.add('open');
         });
