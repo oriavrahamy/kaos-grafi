@@ -2059,21 +2059,39 @@
     // ============================================================
     // ALIAS (ELIAS GAME) - CHAT & HELPERS
     // ============================================================
+    function _normalizeAliasText(s) {
+      const enToHe = {
+        'a':'ש','b':'נ','c':'ב','d':'ג','e':'ק','f':'כ','g':'ע','h':'י',
+        'i':'ן','j':'ח','k':'ל','l':'ך','m':'צ','n':'מ','o':'ם','p':'פ',
+        'q':'/','r':'ר','s':'ד','t':'א','u':'ו','v':'ה','w':'ן','x':'ס',
+        'y':'ט','z':'ז',
+        'A':'ש','B':'נ','C':'ב','D':'ג','E':'ק','F':'כ','G':'ע','H':'י',
+        'I':'ן','J':'ח','K':'ל','L':'ך','M':'צ','N':'מ','O':'ם','P':'פ',
+        'Q':'/','R':'ר','S':'ד','T':'א','U':'ו','V':'ה','W':'ן','X':'ס',
+        'Y':'ט','Z':'ז',
+      };
+      let r = '';
+      for (const ch of s) {
+        if (enToHe[ch]) r += enToHe[ch];
+        else if (/[\u0590-\u05FF\s]/.test(ch)) r += ch;
+      }
+      r = r.replace(/(.)\1{2,}/g, '$1$1');
+      const prefixes = ['א', 'ה', 'ו', 'י', 'נ', 'ת', 'ל', 'ש', 'ב', 'כ', 'מ'];
+      let prev;
+      do {
+        prev = r;
+        for (const p of prefixes) {
+          if (r.startsWith(p)) { r = r.slice(p.length); break; }
+        }
+      } while (r !== prev);
+      return r.trim();
+    }
+
     function isCorrectGuess(message, word) {
       if (!message || !word) return false;
-      let m = message.trim();
-      const w = word.trim();
-      if (m === w) return true;
-
-      m = m.replace(/(.)\1{2,}/g, '$1');
-      if (m === w) return true;
-
-      const prefixLetters = ['א', 'ה', 'ו', 'י', 'נ', 'ת', 'ל', 'ש', 'ב', 'כ', 'מ'];
-      for (const p of prefixLetters) {
-        if (m.startsWith(p) && m.slice(p.length) === w) return true;
-        if (w.startsWith(p) && w.slice(p.length) === m) return true;
-      }
-      return false;
+      const m = _normalizeAliasText(message);
+      const w = _normalizeAliasText(word);
+      return m === w;
     }
 
     function pickAliasWord(usedWords) {
@@ -3520,6 +3538,8 @@
               aliasGuessed: true,
               aliasGuesserId: state.user.uid,
               aliasGuessedAt: Date.now(),
+              [`players.${state.user.uid}.score`]: firebase.firestore.FieldValue.increment(1),
+              [`players.${data.playerOrder?.[data.aliasExplainerIdx] || explainerPid}.score`]: firebase.firestore.FieldValue.increment(1),
             });
           }
         };
